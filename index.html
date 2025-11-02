@@ -375,7 +375,7 @@
 
     function generatePDFBlob() {
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4",compress: true });
       const bulan = parseInt(document.getElementById("bulan").value);
       const tahun = parseInt(document.getElementById("tahun").value);
       const namaBulan = new Date(tahun, bulan).toLocaleDateString("id-ID", { month: "long" }).toUpperCase();
@@ -454,3 +454,4 @@
   </script>
 </body>
 </html>
+
