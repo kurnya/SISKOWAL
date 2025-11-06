@@ -16,51 +16,82 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
   <style>
+    :root {
+      --bg-primary: #f6f7f9;
+      --bg-secondary: #ffffff;
+      --text-primary: #1f2937;
+      --text-secondary: #64748b;
+      --border-color: #d1d5db;
+      --accent-color: #334155;
+      --gradient-start: #334155;
+      --gradient-end: #64748b;
+      --shadow-light: rgba(0, 0, 0, 0.05);
+      --shadow-dark: rgba(0, 0, 0, 0.12);
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #1f2937;
+      --bg-secondary: #374151;
+      --text-primary: #f9fafb;
+      --text-secondary: #d1d5db;
+      --border-color: #4b5563;
+      --accent-color: #f3f4f6;
+      --gradient-start: #f3f4f6;
+      --gradient-end: #9ca3af;
+      --shadow-light: rgba(0, 0, 0, 0.2);
+      --shadow-dark: rgba(0, 0, 0, 0.3);
+    }
+
     body {
       font-family: 'Inter', sans-serif;
-      background: #f6f7f9;
-      color: #1f2937;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     /* ✅ Card layout */
     .container-card {
-      background: #ffffff;
+      background: var(--bg-secondary);
       border-radius: 1rem;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
-      transition: box-shadow 0.3s ease;
+      box-shadow: 0 6px 16px var(--shadow-light);
+      transition: box-shadow 0.3s ease, background 0.3s ease;
+      animation: fadeInUp 0.6s ease-out;
     }
 
     .container-card:hover {
-      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.07);
+      box-shadow: 0 10px 22px var(--shadow-light);
     }
 
     /* ✅ Heading gradient lembut */
     .gradient-text {
-      background: linear-gradient(to right, #334155, #64748b);
+      background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      background-clip: text;
+      color: transparent;
     }
 
     /* ✅ Input minimalis */
     input, select {
-      border: 1px solid #d1d5db;
+      border: 1px solid var(--border-color);
       border-radius: 0.5rem;
       padding: 0.4rem 0.6rem;
       font-size: 0.95rem;
-      background-color: #f9fafb;
+      background-color: var(--bg-secondary);
       transition: all 0.2s ease;
+      color: var(--text-primary);
     }
 
     input:focus, select:focus {
       outline: none;
-      border-color: #64748b;
+      border-color: var(--accent-color);
       box-shadow: 0 0 0 3px rgba(100,116,139,0.2);
-      background-color: #fff;
+      background-color: var(--bg-secondary);
     }
 
     /* ✅ Table tetap dengan tone kalem */
     table { border-collapse: collapse; table-layout: fixed; }
-    th, td { font-size: 0.85rem; }
+    th, td { font-size: 0.85rem; color: var(--text-primary); }
 
     #inputTable thead tr.hari-row { background-color: #e5e9ef; }
     #inputTable thead tr.tanggal-row { background-color: #f8fafc; }
@@ -69,30 +100,53 @@
       width: 280px;
       text-align: left;
       padding-left: 10px;
-      background-color: #f9fafc;
+      background-color: var(--bg-primary);
       font-weight: 600;
-      color: #334155;
+      color: var(--text-primary);
       white-space: nowrap;
     }
 
     #outputTable thead { background-color: #f8e8c7; }
     .sabtu-minggu { background-color: #e4eef9 !important; }
 
+    [data-theme="dark"] #inputTable thead tr.hari-row { background-color: #374151; }
+    [data-theme="dark"] #inputTable thead tr.tanggal-row { background-color: #4b5563; }
+    [data-theme="dark"] #outputTable thead { background-color: #4b5563; }
+    [data-theme="dark"] .sabtu-minggu { background-color: #1f2937 !important; }
+
     /* ✅ Button elegan */
     button {
       transition: all 0.25s ease;
       border-radius: 0.6rem;
+      position: relative;
+      overflow: hidden;
     }
 
     button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--shadow-dark);
+    }
+
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    button:hover::before {
+      left: 100%;
     }
 
     /* ✅ Modal overlay */
     #pdfModal {
       background-color: rgba(0, 0, 0, 0.45);
       backdrop-filter: blur(4px);
+      animation: fadeIn 0.3s ease-out;
     }
 
     .icon {
@@ -101,19 +155,151 @@
       stroke-width: 2;
       margin-right: 6px;
     }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .fade-in { animation: fadeIn 0.5s ease-out; }
+    .slide-in { animation: slideIn 0.5s ease-out; }
+
+    /* Loading spinner */
+    .spinner {
+      border: 2px solid var(--border-color);
+      border-top: 2px solid var(--accent-color);
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Dark mode toggle */
+    .theme-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      background: var(--shadow-light);
+    }
+
+    /* Dark mode overrides for hardcoded colors */
+    [data-theme="dark"] label {
+      color: var(--text-primary);
+    }
+
+    [data-theme="dark"] h2 {
+      color: var(--text-primary);
+    }
+
+    [data-theme="dark"] .icon {
+      color: var(--accent-color);
+    }
+
+    [data-theme="dark"] #petunjuk {
+      background: var(--bg-secondary);
+      border-color: var(--border-color);
+      color: var(--text-primary);
+    }
+
+    [data-theme="dark"] #petunjuk span {
+      color: var(--accent-color);
+    }
+
+    [data-theme="dark"] footer {
+      background: var(--bg-secondary);
+      border-color: var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    [data-theme="dark"] footer span {
+      color: var(--accent-color);
+    }
+
+    [data-theme="dark"] #pdfModal {
+      background-color: rgba(0, 0, 0, 0.6);
+    }
+
+    [data-theme="dark"] #pdfModal > div {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    [data-theme="dark"] #pdfModal > div button {
+      color: var(--text-primary);
+    }
+
+    /* Dark mode table backgrounds */
+    [data-theme="dark"] #tabelHasil {
+      background-color: var(--bg-secondary) !important;
+    }
+
+    [data-theme="dark"] #inputBody {
+      background-color: var(--bg-secondary) !important;
+    }
+
+    /* Dark mode select and input backgrounds */
+    [data-theme="dark"] select, [data-theme="dark"] input {
+      background-color: var(--bg-secondary) !important;
+    }
+
+    /* Dark mode name header cell background */
+    [data-theme="dark"] #hariRow th[rowspan="2"] {
+      background-color: #4b5563 !important;
+    }
   </style>
 </head>
 
 <body class="min-h-screen flex flex-col">
 
   <!-- ✅ Header Navbar -->
-  <header class="bg-white shadow-sm border-b border-gray-100">
+  <header class="shadow-sm border-b" style="background: var(--bg-secondary); border-color: var(--border-color); box-shadow: 0 1px 3px var(--shadow-light);">
     <div class="max-w-7xl mx-auto flex justify-between items-center py-4 px-6">
       <div class="flex items-center gap-3">
         <h1 class="text-2xl font-bold gradient-text">SISKOWAL</h1>
       </div>
-      <div class="text-sm text-gray-500 font-medium hidden md:block">
-        Sistem Konversi Jadwal
+      <div class="flex items-center gap-4">
+        <div class="text-sm font-medium hidden md:block" style="color: var(--text-secondary);">
+          Sistem Konversi Jadwal
+        </div>
+        <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode">
+          <i data-lucide="moon" class="icon"></i>
+        </button>
       </div>
     </div>
   </header>
@@ -123,7 +309,7 @@
     <div class="max-w-7xl mx-auto container-card p-8">
 
       <div class="flex justify-center items-center mb-6 gap-2">
-        <i data-lucide="calendar-days" class="icon text-slate-700"></i>
+        <i data-lucide="calendar-days" class="icon" style="color: var(--accent-color);"></i>
         <h2 class="text-2xl font-bold text-center gradient-text">Konversi Jadwal Security</h2>
       </div>
 
@@ -183,7 +369,7 @@
       </div>
 
       <div class="text-center mt-8 hidden" id="btnConvert">
-        <button onclick="konversiJadwal()" 
+        <button onclick="konversiJadwal()" id="convertBtn"
                 class="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-8 py-2 flex items-center justify-center mx-auto">
           <i data-lucide="settings" class="icon"></i> Konversi Jadwal
         </button>
@@ -386,8 +572,9 @@
         return match ? match.map(Number) : [255, 255, 255];
       }
 
-      const headerColor = rgbToArray(getComputedStyle(document.querySelector("#outputTable thead")).backgroundColor);
-      const weekendColor = rgbToArray(getComputedStyle(document.querySelector(".sabtu-minggu"))?.backgroundColor || "rgb(255,255,255)");
+      const isDarkMode = document.documentElement.hasAttribute('data-theme');
+      const headerColor = isDarkMode ? [75, 85, 99] : rgbToArray(getComputedStyle(document.querySelector("#outputTable thead")).backgroundColor);
+      const weekendColor = [228, 238, 249]; // Always use light theme weekend color
 
       doc.addImage('logo.png', 'PNG', 18, 10, 23, 23);
       doc.setFontSize(10);
@@ -451,7 +638,63 @@
       link.download = `JADWAL BULAN ${namaBulan} ${tahun}.pdf`;
       link.click();
     }
+
+    // Dark mode toggle
+    const themeToggle = document.getElementById("themeToggle");
+    const html = document.documentElement;
+
+    function toggleTheme() {
+      const currentTheme = html.getAttribute("data-theme");
+      if (currentTheme === "dark") {
+        html.removeAttribute("data-theme");
+        localStorage.setItem("theme", "light");
+        themeToggle.innerHTML = '<i data-lucide="moon" class="icon"></i>';
+      } else {
+        html.setAttribute("data-theme", "dark");
+        localStorage.setItem("theme", "dark");
+        themeToggle.innerHTML = '<i data-lucide="sun" class="icon"></i>';
+      }
+      lucide.createIcons();
+    }
+
+    themeToggle.addEventListener("click", toggleTheme);
+
+    // Load saved theme
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+      html.setAttribute("data-theme", "dark");
+      themeToggle.innerHTML = '<i data-lucide="sun" class="icon"></i>';
+    } else {
+      themeToggle.innerHTML = '<i data-lucide="moon" class="icon"></i>';
+    }
+
+    // Modified konversiJadwal with loading
+    const originalKonversiJadwal = konversiJadwal;
+    konversiJadwal = function() {
+      const btn = document.getElementById("convertBtn");
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span> Memproses...';
+      btn.disabled = true;
+
+      // Simulate processing time
+      setTimeout(() => {
+        originalKonversiJadwal();
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        // Add slide-in animation to results
+        document.getElementById("hasil").classList.add("slide-in");
+      }, 1000);
+    };
+
+    // Add fade-in to input container when shown
+    const originalGenerateTabel = generateTabel;
+    generateTabel = function() {
+      originalGenerateTabel();
+      document.getElementById("inputContainer").classList.add("fade-in");
+      document.getElementById("btnConvert").classList.add("fade-in");
+    };
+
+    lucide.createIcons();
   </script>
 </body>
 </html>
-
