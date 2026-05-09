@@ -3,421 +3,208 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SISKOWAL — Sistem Konversi Jadwal Security</title>
+  <title>SISKOWAL - Sistem Konversi Jadwal Security</title>
 
-  <!-- ✅ Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- ✅ Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- ✅ jsPDF + AutoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
-  <style>
-    :root {
-      --bg-primary: #f6f7f9;
-      --bg-secondary: #ffffff;
-      --text-primary: #1f2937;
-      --text-secondary: #64748b;
-      --border-color: #d1d5db;
-      --accent-color: #334155;
-      --gradient-start: #334155;
-      --gradient-end: #64748b;
-      --shadow-light: rgba(0, 0, 0, 0.05);
-      --shadow-dark: rgba(0, 0, 0, 0.12);
-    }
-
-    [data-theme="dark"] {
-      --bg-primary: #1f2937;
-      --bg-secondary: #374151;
-      --text-primary: #f9fafb;
-      --text-secondary: #d1d5db;
-      --border-color: #4b5563;
-      --accent-color: #f3f4f6;
-      --gradient-start: #f3f4f6;
-      --gradient-end: #9ca3af;
-      --shadow-light: rgba(0, 0, 0, 0.2);
-      --shadow-dark: rgba(0, 0, 0, 0.3);
-    }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      transition: background 0.3s ease, color 0.3s ease;
-    }
-
-    /* ✅ Card layout */
-    .container-card {
-      background: var(--bg-secondary);
-      border-radius: 1rem;
-      box-shadow: 0 6px 16px var(--shadow-light);
-      transition: box-shadow 0.3s ease, background 0.3s ease;
-      animation: fadeInUp 0.6s ease-out;
-    }
-
-    .container-card:hover {
-      box-shadow: 0 10px 22px var(--shadow-light);
-    }
-
-    /* ✅ Heading gradient lembut */
-    .gradient-text {
-      background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      color: transparent;
-    }
-
-    /* ✅ Input minimalis */
-    input, select {
-      border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
-      padding: 0.4rem 0.6rem;
-      font-size: 0.95rem;
-      background-color: var(--bg-secondary);
-      transition: all 0.2s ease;
-      color: var(--text-primary);
-    }
-
-    input:focus, select:focus {
-      outline: none;
-      border-color: var(--accent-color);
-      box-shadow: 0 0 0 3px rgba(100,116,139,0.2);
-      background-color: var(--bg-secondary);
-    }
-
-    /* ✅ Table tetap dengan tone kalem */
-    table { border-collapse: collapse; table-layout: fixed; }
-    th, td { font-size: 0.85rem; color: var(--text-primary); }
-
-    #inputTable thead tr.hari-row { background-color: #e5e9ef; }
-    #inputTable thead tr.tanggal-row { background-color: #f8fafc; }
-
-    #inputTable tbody td:first-child {
-      width: 280px;
-      text-align: left;
-      padding-left: 10px;
-      background-color: var(--bg-primary);
-      font-weight: 600;
-      color: var(--text-primary);
-      white-space: nowrap;
-    }
-
-    #outputTable thead { background-color: #f8e8c7; }
-    .sabtu-minggu { background-color: #e4eef9 !important; }
-
-    [data-theme="dark"] #inputTable thead tr.hari-row { background-color: #374151; }
-    [data-theme="dark"] #inputTable thead tr.tanggal-row { background-color: #4b5563; }
-    [data-theme="dark"] #outputTable thead { background-color: #4b5563; }
-    [data-theme="dark"] .sabtu-minggu { background-color: #1f2937 !important; }
-
-    /* ✅ Button elegan */
-    button {
-      transition: all 0.25s ease;
-      border-radius: 0.6rem;
-      position: relative;
-      overflow: hidden;
-    }
-
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px var(--shadow-dark);
-    }
-
-    button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: left 0.5s;
-    }
-
-    button:hover::before {
-      left: 100%;
-    }
-
-    /* ✅ Modal overlay */
-    #pdfModal {
-      background-color: rgba(0, 0, 0, 0.45);
-      backdrop-filter: blur(4px);
-      animation: fadeIn 0.3s ease-out;
-    }
-
-    .icon {
-      width: 18px;
-      height: 18px;
-      stroke-width: 2;
-      margin-right: 6px;
-    }
-
-    /* Animations */
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateX(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    .fade-in { animation: fadeIn 0.5s ease-out; }
-    .slide-in { animation: slideIn 0.5s ease-out; }
-
-    /* Loading spinner */
-    .spinner {
-      border: 2px solid var(--border-color);
-      border-top: 2px solid var(--accent-color);
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      animation: spin 1s linear infinite;
-      display: inline-block;
-      margin-right: 8px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    /* Dark mode toggle */
-    .theme-toggle {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 50%;
-      transition: background 0.2s ease;
-    }
-
-    .theme-toggle:hover {
-      background: var(--shadow-light);
-    }
-
-    /* Dark mode overrides for hardcoded colors */
-    [data-theme="dark"] label {
-      color: var(--text-primary);
-    }
-
-    [data-theme="dark"] h2 {
-      color: var(--text-primary);
-    }
-
-    [data-theme="dark"] .icon {
-      color: var(--accent-color);
-    }
-
-    [data-theme="dark"] #petunjuk {
-      background: var(--bg-secondary);
-      border-color: var(--border-color);
-      color: var(--text-primary);
-    }
-
-    [data-theme="dark"] #petunjuk span {
-      color: var(--accent-color);
-    }
-
-    [data-theme="dark"] footer {
-      background: var(--bg-secondary);
-      border-color: var(--border-color);
-      color: var(--text-secondary);
-    }
-
-    [data-theme="dark"] footer span {
-      color: var(--accent-color);
-    }
-
-    [data-theme="dark"] #pdfModal {
-      background-color: rgba(0, 0, 0, 0.6);
-    }
-
-    [data-theme="dark"] #pdfModal > div {
-      background: var(--bg-secondary);
-      color: var(--text-primary);
-    }
-
-    [data-theme="dark"] #pdfModal > div button {
-      color: var(--text-primary);
-    }
-
-    /* Dark mode table backgrounds */
-    [data-theme="dark"] #tabelHasil {
-      background-color: var(--bg-secondary) !important;
-    }
-
-    [data-theme="dark"] #inputBody {
-      background-color: var(--bg-secondary) !important;
-    }
-
-    /* Dark mode select and input backgrounds */
-    [data-theme="dark"] select, [data-theme="dark"] input {
-      background-color: var(--bg-secondary) !important;
-    }
-
-    /* Dark mode name header cell background */
-    [data-theme="dark"] #hariRow th[rowspan="2"] {
-      background-color: #4b5563 !important;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body class="min-h-screen flex flex-col">
-
-  <!-- ✅ Header Navbar -->
-  <header class="shadow-sm border-b" style="background: var(--bg-secondary); border-color: var(--border-color); box-shadow: 0 1px 3px var(--shadow-light);">
-    <div class="max-w-7xl mx-auto flex justify-between items-center py-4 px-6">
-      <div class="flex items-center gap-3">
-        <h1 class="text-2xl font-bold gradient-text">SISKOWAL</h1>
-      </div>
-      <div class="flex items-center gap-4">
-        <div class="text-sm font-medium hidden md:block" style="color: var(--text-secondary);">
-          Sistem Konversi Jadwal
+  <header class="pt-5 px-4 sm:px-6">
+    <div class="app-shell topbar rounded-[1.6rem]">
+      <div class="flex justify-between items-center py-4 px-5 sm:px-7">
+        <div class="flex items-center gap-3 sm:gap-4">
+          <div class="w-11 h-11 rounded-2xl flex items-center justify-center" style="background: linear-gradient(135deg, var(--accent-color), var(--accent-strong));">
+            <i data-lucide="shield-check" class="icon" style="color: white; margin-right: 0;"></i>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold gradient-text">SISKOWAL</h1>
+            <p class="text-sm muted-copy">Sistem konversi jadwal security yang lebih rapi dan mudah dipakai.</p>
+          </div>
         </div>
-        <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode">
-          <i data-lucide="moon" class="icon"></i>
-        </button>
+        <div class="flex items-center gap-4">
+          <div class="text-sm font-medium hidden lg:block muted-copy">
+            Kalender kerja, konversi shift, dan ekspor PDF
+          </div>
+          <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode">
+            <i data-lucide="moon" class="icon" style="margin-right: 0;"></i>
+          </button>
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- ✅ Main Container -->
-  <main class="flex-grow p-6">
-    <div class="max-w-7xl mx-auto container-card p-8">
-
-      <div class="flex justify-center items-center mb-6 gap-2">
-        <i data-lucide="calendar-days" class="icon" style="color: var(--accent-color);"></i>
-        <h2 class="text-2xl font-bold text-center gradient-text">Konversi Jadwal Security</h2>
-      </div>
-
-      <!-- Pilihan Bulan & Tahun -->
-      <div class="flex flex-wrap justify-center items-center gap-4 mb-4">
-        <div class="flex items-center gap-2">
-          <label class="font-medium text-gray-700">Bulan</label>
-          <select id="bulan" class="bg-white"></select>
-        </div>
-        <div class="flex items-center gap-2">
-          <label class="font-medium text-gray-700">Tahun</label>
-          <input type="number" id="tahun" class="w-28 bg-white" />
-        </div>
-
-        <!-- ✅ Tombol Aksi -->
-        <div class="flex items-center gap-2">
-          <button onclick="generateTabel()" 
-                  class="bg-slate-700 hover:bg-slate-800 text-white font-semibold px-6 py-2 flex items-center justify-center">
-            <i data-lucide="refresh-cw" class="icon"></i> Buat Tabel
-          </button>
-
-          <button onclick="togglePetunjuk()" 
-                  class="bg-slate-500 hover:bg-slate-600 text-white font-semibold px-4 py-2 flex items-center justify-center">
-            <i data-lucide="help-circle" class="icon"></i> Petunjuk
-          </button>
-        </div>
-      </div>
-
-      <!-- ✅ Area Petunjuk (Masih di dalam card yang sama) -->
-      <div id="petunjuk" class="hidden bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-4 py-3 mb-8 mx-auto w-full max-w-3xl">
-        <div class="flex items-center gap-2 mb-1">
-          <i data-lucide="info" class="icon text-slate-600"></i>
-          <span class="font-semibold text-slate-700">Keterangan Pengisian:</span>
-        </div>
-        <p class="text-xs sm:text-sm leading-relaxed">
-          <b>X</b> = Libur &nbsp; | &nbsp;
-          <b>P</b> = 08.00–16.00 &nbsp; | &nbsp;
-          <b>S</b> = 16.00–00.00 &nbsp; | &nbsp;
-          <b>M</b> = 00.00–08.00 &nbsp; | &nbsp;
-          <b>PS</b> = 08.00–20.00 &nbsp; | &nbsp;
-          <b>SM</b> = 20.00–08.00
-        </p>
-      </div>
-
-
-      <!-- ✅ Tabel Input -->
-      <div id="inputContainer" class="overflow-x-auto hidden">
-        <table class="min-w-full border border-gray-200 text-center rounded-lg" id="inputTable">
-          <thead>
-            <tr class="hari-row" id="hariRow">
-              <th rowspan="2" class="border px-2 py-2 bg-slate-100 text-gray-700 font-semibold">Nama</th>
-            </tr>
-            <tr class="tanggal-row" id="tanggalRow"></tr>
-          </thead>
-          <tbody id="inputBody"></tbody>
-        </table>
-      </div>
-
-      <div class="text-center mt-8 hidden" id="btnConvert">
-        <button onclick="konversiJadwal()" id="convertBtn"
-                class="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-8 py-2 flex items-center justify-center mx-auto">
-          <i data-lucide="settings" class="icon"></i> Konversi Jadwal
-        </button>
-      </div>
-
-      <!-- ✅ Hasil Konversi -->
-      <div id="hasil" class="mt-12 overflow-x-auto hidden">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-3">
-          <div class="flex items-center gap-2">
-            <i data-lucide="clipboard-list" class="icon text-slate-700"></i>
-            <h2 class="text-xl font-semibold text-gray-700">Hasil Konversi</h2>
+  <main class="flex-grow px-4 py-6 sm:px-6 sm:py-8">
+    <div class="app-shell container-card p-5 sm:p-8 lg:p-10">
+      <section class="hero-grid mb-8">
+        <div class="hero-panel p-6 sm:p-7">
+          <div class="eyebrow mb-4">
+            <i data-lucide="calendar-days" class="icon" style="margin-right: 0; width: 16px; height: 16px;"></i>
+            Penjadwalan Bulanan
           </div>
-          <div class="flex gap-2">
-            <button onclick="previewPDF()" 
-                    class="bg-slate-600 hover:bg-slate-700 text-white font-medium px-5 py-2 flex items-center justify-center">
+          <h2 class="text-3xl sm:text-4xl font-bold gradient-text leading-tight">Konversi Jadwal Security</h2>
+          <p class="section-subtitle mt-3 max-w-2xl">
+            Susun jadwal per bulan, isi kode shift dengan cepat, lalu ubah otomatis menjadi format operasional yang siap dicek dan diunduh.
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div class="control-card">
+              <label for="bulan" class="field-label">Bulan</label>
+              <div class="field-shell with-badge">
+                <div class="field-badge">
+                  <i data-lucide="calendar-range" class="icon" style="margin-right: 0; width: 16px; height: 16px;"></i>
+                </div>
+                <select id="bulan"></select>
+                <i data-lucide="chevron-down" class="field-arrow"></i>
+              </div>
+            </div>
+            <div class="control-card">
+              <label for="tahun" class="field-label">Tahun</label>
+              <div class="field-shell">
+                <i data-lucide="badge-plus" class="field-icon"></i>
+                <input type="number" id="tahun" />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 mt-6">
+            <button onclick="generateTabel()" class="btn-primary px-6 py-3 flex items-center justify-center">
+              <i data-lucide="layout-grid" class="icon"></i> Buat Tabel
+            </button>
+            <button onclick="togglePetunjuk()" class="btn-secondary px-5 py-3 flex items-center justify-center">
+              <i data-lucide="book-open" class="icon"></i> Lihat Petunjuk
+            </button>
+          </div>
+        </div>
+
+        <aside class="info-panel p-6 sm:p-7 flex flex-col justify-between">
+          <div>
+            <div class="section-title">Kode Shift</div>
+            <p class="section-subtitle mt-2">Gunakan format singkat agar input lebih cepat dan konsisten di seluruh tabel.</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mt-5">
+            <div class="stat-card">
+              <div class="text-xs font-bold uppercase tracking-wide muted-copy">Pagi</div>
+              <div class="mt-2 text-lg font-bold">P</div>
+              <div class="text-sm muted-copy">08.00-16.00</div>
+            </div>
+            <div class="stat-card">
+              <div class="text-xs font-bold uppercase tracking-wide muted-copy">Sore</div>
+              <div class="mt-2 text-lg font-bold">S</div>
+              <div class="text-sm muted-copy">16.00-00.00</div>
+            </div>
+            <div class="stat-card">
+              <div class="text-xs font-bold uppercase tracking-wide muted-copy">Malam</div>
+              <div class="mt-2 text-lg font-bold">M</div>
+              <div class="text-sm muted-copy">00.00-08.00</div>
+            </div>
+            <div class="stat-card">
+              <div class="text-xs font-bold uppercase tracking-wide muted-copy">Libur</div>
+              <div class="mt-2 text-lg font-bold">X</div>
+              <div class="text-sm muted-copy">Tidak bertugas</div>
+            </div>
+          </div>
+
+          <div class="hint-box px-4 py-4 mt-5">
+            <div class="text-sm font-semibold">Shift panjang</div>
+            <div class="text-sm muted-copy mt-1">PS = 08.00-19.00 dan SM = 19.00-08.00</div>
+          </div>
+        </aside>
+      </section>
+
+      <section id="petunjuk" class="hidden hint-box px-4 py-4 sm:px-5 sm:py-5 mb-8 mx-auto w-full">
+        <div class="flex items-center gap-2 mb-2">
+          <i data-lucide="info" class="icon" style="color: var(--accent-color);"></i>
+          <span class="font-semibold">Keterangan Pengisian</span>
+        </div>
+        <p class="text-sm leading-relaxed muted-copy">
+          <b>X</b> = Libur &nbsp; | &nbsp;
+          <b>P</b> = 08.00-16.00 &nbsp; | &nbsp;
+          <b>S</b> = 16.00-00.00 &nbsp; | &nbsp;
+          <b>M</b> = 00.00-08.00 &nbsp; | &nbsp;
+          <b>PS</b> = 08.00-19.00 &nbsp; | &nbsp;
+          <b>SM</b> = 19.00-08.00
+        </p>
+      </section>
+
+      <section class="section-panel p-4 sm:p-5 lg:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+          <div>
+            <div class="section-title">Tabel Input Jadwal</div>
+            <p class="section-subtitle mt-1">Isi kode shift untuk setiap personel pada tanggal yang tersedia.</p>
+          </div>
+        </div>
+
+        <div id="inputContainer" class="table-shell hidden">
+          <table class="min-w-full text-center rounded-lg" id="inputTable">
+            <thead>
+              <tr class="hari-row" id="hariRow">
+                <th rowspan="2" class="border px-2 py-2 text-gray-700 font-semibold">Nama</th>
+              </tr>
+              <tr class="tanggal-row" id="tanggalRow"></tr>
+            </thead>
+            <tbody id="inputBody"></tbody>
+          </table>
+        </div>
+
+        <div class="text-center mt-6 hidden" id="btnConvert">
+          <button onclick="konversiJadwal()" id="convertBtn" class="btn-success px-8 py-3 flex items-center justify-center mx-auto">
+            <i data-lucide="settings-2" class="icon"></i> Konversi Jadwal
+          </button>
+        </div>
+      </section>
+
+      <section id="hasil" class="mt-8 section-panel p-4 sm:p-5 lg:p-6 overflow-x-auto hidden">
+        <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl flex items-center justify-center" style="background: var(--accent-soft);">
+              <i data-lucide="clipboard-list" class="icon" style="color: var(--accent-color); margin-right: 0;"></i>
+            </div>
+            <div>
+              <h2 class="section-title">Hasil Konversi</h2>
+              <p class="section-subtitle mt-1">Tampilan akhir jadwal operasional yang siap dipreview atau diunduh.</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <button onclick="previewPDF()" class="btn-secondary px-5 py-3 flex items-center justify-center">
               <i data-lucide="eye" class="icon"></i> Lihat Preview
             </button>
-            <button onclick="downloadPDF()" 
-                    class="bg-rose-600 hover:bg-rose-700 text-white font-medium px-5 py-2 flex items-center justify-center">
+            <button onclick="downloadPDF()" class="btn-danger px-5 py-3 flex items-center justify-center">
               <i data-lucide="download" class="icon"></i> Download PDF
             </button>
           </div>
         </div>
 
-        <table class="w-full border border-gray-200 text-sm text-center rounded-lg" id="outputTable">
-          <thead>
-            <tr>
-              <th class="border px-2 py-2">Hari</th>
-              <th class="border px-2 py-2">Tanggal</th>
-              <th class="border px-2 py-2">08.00–16.00</th>
-              <th class="border px-2 py-2">16.00–00.00</th>
-              <th class="border px-2 py-2">00.00–08.00</th>
-              <th class="border px-2 py-2">08.00–19.00</th>
-              <th class="border px-2 py-2">19.00–08.00</th>
-            </tr>
-          </thead>
-          <tbody id="tabelHasil" class="bg-white"></tbody>
-        </table>
-      </div>
+        <div class="table-shell">
+          <table class="text-sm text-center rounded-lg" id="outputTable">
+            <thead>
+              <tr>
+                <th class="border px-2 py-3">Hari</th>
+                <th class="border px-2 py-3">Tanggal</th>
+                <th class="border px-2 py-3">08.00-16.00</th>
+                <th class="border px-2 py-3">16.00-00.00</th>
+                <th class="border px-2 py-3">00.00-08.00</th>
+                <th class="border px-2 py-3">08.00-19.00</th>
+                <th class="border px-2 py-3">19.00-08.00</th>
+              </tr>
+            </thead>
+            <tbody id="tabelHasil" class="bg-white"></tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </main>
 
-  <!-- ✅ Footer -->
-  <footer class="text-center text-sm text-gray-500 py-4 border-t border-gray-100 bg-white">
-    Dibuat Oleh <span class="font-semibold text-slate-700">DIMAS KURNIAWAN</span>
+  <footer class="px-4 pb-5 sm:px-6 sm:pb-6">
+    <div class="app-shell text-center text-sm py-4 border bg-white rounded-[1.35rem]" style="border-color: var(--border-color); color: var(--text-secondary);">
+      Dibuat oleh <span class="font-semibold" style="color: var(--accent-strong);">DIMAS KURNIAWAN</span>
+    </div>
   </footer>
 
-  <!-- ✅ Popup Modal Preview PDF -->
   <div id="pdfModal" class="fixed inset-0 hidden items-center justify-center z-50">
     <div class="bg-white rounded-2xl shadow-2xl w-11/12 md:w-3/4 lg:w-1/2 h-[80vh] flex flex-col overflow-hidden">
       <div class="flex justify-between items-center px-5 py-3 border-b bg-slate-700 text-white rounded-t-2xl">
@@ -431,270 +218,6 @@
     </div>
   </div>
 
-  <!-- ✅ Script Asli (tidak diubah) -->
-  <script>
-    lucide.createIcons();
-
-    function togglePetunjuk() {
-      const box = document.getElementById("petunjuk");
-      box.classList.toggle("hidden");
-      lucide.createIcons();
-    }
-
-    const bulanNama = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-    const selectBulan = document.getElementById("bulan");
-    bulanNama.forEach((b, i) => {
-      const opt = document.createElement("option");
-      opt.value = i; opt.textContent = b;
-      selectBulan.appendChild(opt);
-    });
-    window.addEventListener("DOMContentLoaded", () => {
-      const now = new Date();
-      document.getElementById("bulan").value = now.getMonth();
-      document.getElementById("tahun").value = now.getFullYear();
-    });
-
-    const shiftMap = {
-      "P": "08.00–16.00",
-      "S": "16.00–00.00",
-      "M": "00.00–08.00",
-      "PS": "08.00–19.00",
-      "SM": "19.00–08.00",
-      "X": "-"
-    };
-    const namaList = ["Agus Sudirman", "Parwono", "Dimas Kurniawan", "Deddy Supriyadi"];
-
-    function generateTabel() {
-      const bulan = parseInt(document.getElementById("bulan").value);
-      const tahun = parseInt(document.getElementById("tahun").value);
-      const daysInMonth = new Date(tahun, bulan + 1, 0).getDate();
-      const hariRow = document.getElementById("hariRow");
-      const tanggalRow = document.getElementById("tanggalRow");
-      const tbody = document.getElementById("inputBody");
-
-      hariRow.innerHTML = `<th rowspan="2" class="border px-2 py-1 bg-blue-50">Nama</th>`;
-      tanggalRow.innerHTML = "";
-      tbody.innerHTML = namaList.map(n => `<tr><td class="border px-2 py-1 font-semibold">${n}</td></tr>`).join("");
-
-      for (let t = 1; t <= daysInMonth; t++) {
-        const tanggal = new Date(tahun, bulan, t);
-        const hari = tanggal.toLocaleDateString("id-ID", { weekday: "short" }).toUpperCase();
-        hariRow.innerHTML += `<th class="border px-2 py-1">${hari}</th>`;
-        tanggalRow.innerHTML += `<th class="border px-2 py-1">${t}</th>`;
-        document.querySelectorAll("#inputTable tbody tr").forEach(tr => {
-          const td = document.createElement("td");
-          td.className = "border px-1 py-1";
-          const nama = tr.cells[0].textContent.trim();
-          const id = `${nama}_${t}`;
-          td.innerHTML = `<input type='text' maxlength='3' class='border rounded w-12 text-center' id='${id}' data-nama='${nama}' data-tgl='${t}' />`;
-          tr.appendChild(td);
-        });
-      }
-      document.getElementById("inputContainer").classList.remove("hidden");
-      document.getElementById("btnConvert").classList.remove("hidden");
-      document.getElementById("hasil").classList.add("hidden");
-      aktifkanNavigasi();
-    }
-
-    function aktifkanNavigasi() {
-      const inputs = document.querySelectorAll("#inputTable input");
-      const matrix = {};
-      namaList.forEach((nama) => {
-        matrix[nama] = {};
-        document.querySelectorAll(`#inputTable input[data-nama='${nama}']`).forEach((input, colIdx) => {
-          matrix[nama][colIdx] = input;
-        });
-      });
-      inputs.forEach(input => {
-        input.addEventListener("keydown", e => {
-          const nama = input.dataset.nama;
-          const tgl = parseInt(input.dataset.tgl);
-          const col = tgl - 1;
-          const row = namaList.indexOf(nama);
-          if (["ArrowRight","ArrowLeft","ArrowUp","ArrowDown"].includes(e.key)) {
-            e.preventDefault();
-            let nextInput;
-            if (e.key === "ArrowRight" && col + 1 < Object.keys(matrix[nama]).length)
-              nextInput = matrix[nama][col + 1];
-            if (e.key === "ArrowLeft" && col - 1 >= 0)
-              nextInput = matrix[nama][col - 1];
-            if (e.key === "ArrowDown" && row + 1 < namaList.length)
-              nextInput = matrix[namaList[row + 1]][col];
-            if (e.key === "ArrowUp" && row - 1 >= 0)
-              nextInput = matrix[namaList[row - 1]][col];
-            if (nextInput) nextInput.focus();
-          }
-        });
-      });
-    }
-
-    function konversiJadwal() {
-      const bulan = parseInt(document.getElementById("bulan").value);
-      const tahun = parseInt(document.getElementById("tahun").value);
-      const daysInMonth = new Date(tahun, bulan + 1, 0).getDate();
-      const tbody = document.getElementById("tabelHasil");
-      tbody.innerHTML = "";
-      for (let tgl = 1; tgl <= daysInMonth; tgl++) {
-        const tanggal = new Date(tahun, bulan, tgl);
-        const hari = tanggal.toLocaleDateString("id-ID", { weekday: "long" });
-        const hariUpper = hari.toUpperCase();
-        const weekend = (hari === "Sabtu" || hari === "Minggu");
-        let shift = {"08.00–16.00": [],"16.00–00.00": [],"00.00–08.00": [],"08.00–19.00": [],"19.00–08.00": []};
-        namaList.forEach(nama => {
-          const kode = document.getElementById(`${nama}_${tgl}`).value.toUpperCase() || "X";
-          const jam = shiftMap[kode];
-          if (jam && jam !== "-") shift[jam].push(nama);
-        });
-        tbody.innerHTML += `
-          <tr class="${weekend ? 'sabtu-minggu' : ''}">
-            <td class="border px-2 py-1 font-medium">${hariUpper}</td>
-            <td class="border px-2 py-1">${tgl}</td>
-            <td class="border px-2 py-1">${shift["08.00–16.00"].join("<br>") || "-"}</td>
-            <td class="border px-2 py-1">${shift["16.00–00.00"].join("<br>") || "-"}</td>
-            <td class="border px-2 py-1">${shift["00.00–08.00"].join("<br>") || "-"}</td>
-            <td class="border px-2 py-1">${shift["08.00–19.00"].join("<br>") || "-"}</td>
-            <td class="border px-2 py-1">${shift["19.00–08.00"].join("<br>") || "-"}</td>
-          </tr>`;
-      }
-      document.getElementById("hasil").classList.remove("hidden");
-    }
-
-    function generatePDFBlob() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4",compress: true });
-      const bulan = parseInt(document.getElementById("bulan").value);
-      const tahun = parseInt(document.getElementById("tahun").value);
-      const namaBulan = new Date(tahun, bulan).toLocaleDateString("id-ID", { month: "long" }).toUpperCase();
-      const daysInMonth = new Date(tahun, bulan + 1, 0).getDate();
-
-      function rgbToArray(rgbString) {
-        const match = rgbString.match(/\d+/g);
-        return match ? match.map(Number) : [255, 255, 255];
-      }
-
-      const isDarkMode = document.documentElement.hasAttribute('data-theme');
-      const headerColor = isDarkMode ? [75, 85, 99] : rgbToArray(getComputedStyle(document.querySelector("#outputTable thead")).backgroundColor);
-      const weekendColor = [228, 238, 249]; // Always use light theme weekend color
-
-      doc.addImage('logo.png', 'PNG', 18, 10, 23, 23);
-      doc.setFontSize(10);
-      doc.text("JADWAL SECURITY", 105, 22, { align: "center" });
-      doc.setFontSize(12);
-      doc.text("PT. CAMPA PUTRA SILIWANGI", 105, 29, { align: "center" });
-      doc.setFontSize(9);
-      doc.text("JL. GAMA SETIA RAYA BLOK B3 No.6A Komplek Pelni Kel. Bakti Jaya Kec. Sukma Jaya Depok – 16418", 105, 35, { align: "center" });
-      doc.text("Tlp: 021 – 87728378 / email: support@campasiliwangi.com", 105, 40, { align: "center" });
-      doc.setFontSize(10);
-      doc.text(`Periode : 1 ${namaBulan} s.d ${daysInMonth} ${namaBulan} ${tahun}`, 105, 49, { align: "center" });
-      doc.text("Lokasi  : OSCARMAS PONTIANAK", 15, 55);
-
-      const rows = [];
-      document.querySelectorAll("#tabelHasil tr").forEach(tr => {
-        const cells = [...tr.querySelectorAll("td")].map(td => td.innerText.replace(/\n/g, " "));
-        rows.push(cells);
-      });
-
-      doc.autoTable({
-        startY: 60,
-        head: [["HARI","TGL","08.00–16.00","16.00–00.00","00.00–08.00","08.00–19.00","19.00–08.00"]],
-        body: rows,
-        styles: { fontSize: 8, halign: "center", valign: "middle",lineWidth: 0.2 },
-        headStyles: { fillColor: headerColor, textColor: 0, fontStyle: "bold"},
-        didParseCell: function (data) {
-          const hari = data.row.raw[0];
-          if (hari && (hari.includes("SABTU") || hari.includes("MINGGU"))) {
-            data.cell.styles.fillColor = weekendColor;
-          }
-        },
-        margin: { left: 10, right: 10 },
-        theme: "grid",
-      });
-
-      return doc.output("bloburl");
-    }
-
-    function previewPDF() {
-      const pdfUrl = generatePDFBlob();
-      document.getElementById("pdfPreview").src = pdfUrl;
-      const modal = document.getElementById("pdfModal");
-      modal.classList.remove("hidden");
-      modal.classList.add("flex");
-    }
-
-    function closePreview() {
-      const modal = document.getElementById("pdfModal");
-      modal.classList.add("hidden");
-      modal.classList.remove("flex");
-    }
-
-    function downloadPDF() {
-      const bulan = parseInt(document.getElementById("bulan").value);
-      const tahun = parseInt(document.getElementById("tahun").value);
-      const namaBulan = new Date(tahun, bulan).toLocaleDateString("id-ID", { month: "long" }).toUpperCase();
-
-      const docBlob = generatePDFBlob();
-      const link = document.createElement("a");
-      link.href = docBlob;
-      link.download = `JADWAL BULAN ${namaBulan} ${tahun}.pdf`;
-      link.click();
-    }
-
-    // Dark mode toggle
-    const themeToggle = document.getElementById("themeToggle");
-    const html = document.documentElement;
-
-    function toggleTheme() {
-      const currentTheme = html.getAttribute("data-theme");
-      if (currentTheme === "dark") {
-        html.removeAttribute("data-theme");
-        localStorage.setItem("theme", "light");
-        themeToggle.innerHTML = '<i data-lucide="moon" class="icon"></i>';
-      } else {
-        html.setAttribute("data-theme", "dark");
-        localStorage.setItem("theme", "dark");
-        themeToggle.innerHTML = '<i data-lucide="sun" class="icon"></i>';
-      }
-      lucide.createIcons();
-    }
-
-    themeToggle.addEventListener("click", toggleTheme);
-
-    // Load saved theme
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark") {
-      html.setAttribute("data-theme", "dark");
-      themeToggle.innerHTML = '<i data-lucide="sun" class="icon"></i>';
-    } else {
-      themeToggle.innerHTML = '<i data-lucide="moon" class="icon"></i>';
-    }
-
-    // Modified konversiJadwal with loading
-    const originalKonversiJadwal = konversiJadwal;
-    konversiJadwal = function() {
-      const btn = document.getElementById("convertBtn");
-      const originalText = btn.innerHTML;
-      btn.innerHTML = '<span class="spinner"></span> Memproses...';
-      btn.disabled = true;
-
-      // Simulate processing time
-      setTimeout(() => {
-        originalKonversiJadwal();
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        // Add slide-in animation to results
-        document.getElementById("hasil").classList.add("slide-in");
-      }, 1000);
-    };
-
-    // Add fade-in to input container when shown
-    const originalGenerateTabel = generateTabel;
-    generateTabel = function() {
-      originalGenerateTabel();
-      document.getElementById("inputContainer").classList.add("fade-in");
-      document.getElementById("btnConvert").classList.add("fade-in");
-    };
-
-    lucide.createIcons();
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
