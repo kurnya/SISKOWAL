@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Generated PDF output
+*.pdf
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.code-workspace
+
+# Logs
+*.log
+npm-debug.log*
+
+# NPM config (tidak diperlukan karena node_modules hanya untuk generate PDF)
+package.json
+package-lock.json

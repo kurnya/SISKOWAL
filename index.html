@@ -29,6 +29,9 @@
           <div class="text-sm font-medium hidden lg:block muted-copy">
             Kalender kerja, konversi shift, dan ekspor PDF
           </div>
+          <button id="btnPengaturan" onclick="bukaPengaturan()" disabled class="btn-secondary px-4 py-2 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" title="Atur petugas, shift, dan PAM">
+            <i data-lucide="settings" class="icon"></i> Pengaturan
+          </button>
           <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode">
             <i data-lucide="moon" class="icon" style="margin-right: 0;"></i>
           </button>
@@ -50,7 +53,10 @@
             Susun jadwal per bulan, isi kode shift dengan cepat, lalu ubah otomatis menjadi format operasional yang siap dicek dan diunduh.
           </p>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+          <div class="section-title mt-6 flex items-center gap-2">
+            <i data-lucide="file-plus" class="icon" style="margin-right: 0;"></i> Buat jadwal baru
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
             <div class="control-card">
               <label for="bulan" class="field-label">Bulan</label>
               <div class="field-shell with-badge">
@@ -71,12 +77,29 @@
           </div>
 
           <div class="flex flex-wrap items-center gap-3 mt-6">
-            <button onclick="generateTabel()" class="btn-primary px-6 py-3 flex items-center justify-center">
+            <button onclick="buatTabelBaru()" id="btnBuatTabel" disabled class="btn-primary px-6 py-3 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
               <i data-lucide="layout-grid" class="icon"></i> Buat Tabel
             </button>
             <button onclick="togglePetunjuk()" class="btn-secondary px-5 py-3 flex items-center justify-center">
               <i data-lucide="book-open" class="icon"></i> Lihat Petunjuk
             </button>
+          </div>
+
+          <div class="section-title mt-8 flex items-center gap-2">
+            <i data-lucide="folder-open" class="icon" style="margin-right: 0;"></i> Buka jadwal tersimpan
+          </div>
+          <div class="control-card mt-3">
+            <label for="bulanSumber" class="field-label">Jadwal yang sudah ada di spreadsheet</label>
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="field-shell flex-1" style="min-width: 12rem;">
+                <select id="bulanSumber" disabled></select>
+                <i data-lucide="chevron-down" class="field-arrow"></i>
+              </div>
+              <button onclick="bukaJadwalTersimpan()" id="prevBtn" disabled class="btn-secondary px-6 py-3 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <i data-lucide="folder-open" class="icon"></i> Buka
+              </button>
+            </div>
+            <p class="text-sm muted-copy mt-2">Membuka satu bulan apa adanya untuk dilihat, diubah, atau diunduh. Data bulan lain tidak ikut berubah.</p>
           </div>
         </div>
 
@@ -121,14 +144,7 @@
           <i data-lucide="info" class="icon" style="color: var(--accent-color);"></i>
           <span class="font-semibold">Keterangan Pengisian</span>
         </div>
-        <p class="text-sm leading-relaxed muted-copy">
-          <b>X</b> = Libur &nbsp; | &nbsp;
-          <b>P</b> = 08.00-16.00 &nbsp; | &nbsp;
-          <b>S</b> = 16.00-00.00 &nbsp; | &nbsp;
-          <b>M</b> = 00.00-08.00 &nbsp; | &nbsp;
-          <b>PS</b> = 08.00-19.00 &nbsp; | &nbsp;
-          <b>SM</b> = 19.00-08.00
-        </p>
+        <p id="petunjukIsi" class="text-sm leading-relaxed muted-copy">Memuat kode shift...</p>
       </section>
 
       <section class="section-panel p-4 sm:p-5 lg:p-6">
@@ -136,6 +152,7 @@
           <div>
             <div class="section-title">Tabel Input Jadwal</div>
             <p class="section-subtitle mt-1">Isi kode shift untuk setiap personel pada tanggal yang tersedia.</p>
+            <p id="status" class="text-sm mt-1 muted-copy" role="status" aria-live="polite"></p>
           </div>
         </div>
 
@@ -151,8 +168,11 @@
           </table>
         </div>
 
-        <div class="text-center mt-6 hidden" id="btnConvert">
-          <button onclick="konversiJadwal()" id="convertBtn" class="btn-success px-8 py-3 flex items-center justify-center mx-auto">
+        <div class="flex flex-wrap justify-center gap-3 mt-6 hidden" id="btnConvert">
+          <button onclick="simpanKeSpreadsheet()" id="saveBtn" class="btn-secondary px-8 py-3 flex items-center justify-center">
+            <i data-lucide="save" class="icon"></i> Simpan ke Spreadsheet
+          </button>
+          <button onclick="konversiJadwal()" id="convertBtn" class="btn-success px-8 py-3 flex items-center justify-center">
             <i data-lucide="settings-2" class="icon"></i> Konversi Jadwal
           </button>
         </div>
@@ -182,18 +202,58 @@
         <div class="table-shell">
           <table class="text-sm text-center rounded-lg" id="outputTable">
             <thead>
-              <tr>
-                <th class="border px-2 py-3">Hari</th>
-                <th class="border px-2 py-3">Tanggal</th>
-                <th class="border px-2 py-3">08.00-16.00</th>
-                <th class="border px-2 py-3">16.00-00.00</th>
-                <th class="border px-2 py-3">00.00-08.00</th>
-                <th class="border px-2 py-3">08.00-19.00</th>
-                <th class="border px-2 py-3">19.00-08.00</th>
-              </tr>
+              <tr id="outputHead"></tr>
             </thead>
             <tbody id="tabelHasil" class="bg-white"></tbody>
           </table>
+        </div>
+      </section>
+
+      <section id="laporanAbsensi" class="mt-8 section-panel p-4 sm:p-5 lg:p-6">
+        <div class="mb-5">
+          <div class="section-title">Laporan Absensi</div>
+          <p class="section-subtitle mt-1">Format absensi untuk laporan: tanggal 16 bulan sebelumnya sampai tanggal 15 bulan yang dipilih, diambil dari jadwal yang sudah tersimpan di spreadsheet.</p>
+          <p id="absStatus" class="text-sm mt-1 muted-copy" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="flex flex-wrap items-end gap-3">
+          <div>
+            <label for="absBulan" class="field-label">Bulan akhir periode</label>
+            <div class="field-shell" style="min-width: 12rem;">
+              <select id="absBulan"></select>
+              <i data-lucide="chevron-down" class="field-arrow"></i>
+            </div>
+          </div>
+          <div>
+            <label for="absTahun" class="field-label">Tahun</label>
+            <div class="field-shell" style="width: 8rem;">
+              <input type="number" id="absTahun" />
+            </div>
+          </div>
+          <button onclick="muatAnggotaAbsensi()" id="absMuatBtn" disabled class="btn-primary px-6 py-3 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+            <i data-lucide="users" class="icon"></i> Muat Anggota
+          </button>
+        </div>
+        <p id="absPeriode" class="text-sm font-semibold mt-3"></p>
+
+        <div id="absPanel" class="hidden mt-6">
+          <div class="field-label">Anggota yang dimasukkan ke laporan</div>
+          <p class="text-sm muted-copy mb-3">Hilangkan centang untuk mengecualikan anggota, misalnya yang sudah tidak bertugas di bulan ini.</p>
+          <div id="absList" class="absensi-list"></div>
+
+          <label class="absensi-item mt-3">
+            <input type="checkbox" id="absPam" />
+            <span><b>Sertakan baris PAM</b><span class="block text-sm muted-copy">Nama diambil dari Pengaturan (Nama PAM), kode M setiap hari.</span></span>
+          </label>
+
+          <div class="flex flex-wrap gap-3 mt-5">
+            <button onclick="previewAbsensi()" class="btn-secondary px-5 py-3 flex items-center justify-center">
+              <i data-lucide="eye" class="icon"></i> Lihat Preview
+            </button>
+            <button onclick="downloadAbsensi()" class="btn-danger px-5 py-3 flex items-center justify-center">
+              <i data-lucide="download" class="icon"></i> Download PDF Absensi
+            </button>
+          </div>
         </div>
       </section>
     </div>
@@ -206,7 +266,7 @@
   </footer>
 
   <div id="pdfModal" class="fixed inset-0 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-2xl w-11/12 md:w-3/4 lg:w-1/2 h-[80vh] flex flex-col overflow-hidden">
+    <div id="pdfModalCard" class="bg-white rounded-2xl shadow-2xl w-11/12 md:w-3/4 lg:w-1/2 h-[80vh] flex flex-col overflow-hidden">
       <div class="flex justify-between items-center px-5 py-3 border-b bg-slate-700 text-white rounded-t-2xl">
         <div class="flex items-center gap-2">
           <i data-lucide="file-text" class="icon text-white"></i>
@@ -218,6 +278,39 @@
     </div>
   </div>
 
+  <div id="settingsModal" class="fixed inset-0 hidden items-center justify-center z-50 p-3" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settings-card shadow-2xl w-full md:w-4/5 lg:w-3/5 max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center px-5 py-3 settings-head">
+        <h3 id="settingsTitle" class="text-lg font-semibold flex items-center gap-2">
+          <i data-lucide="settings" class="icon"></i> Pengaturan
+        </h3>
+        <button onclick="tutupPengaturan()" class="text-2xl font-bold" aria-label="Tutup">&times;</button>
+      </div>
+      <div class="settings-tabs px-5 pt-3 flex gap-2" role="tablist">
+        <button class="settings-tab" data-tab="petugas" role="tab">Petugas</button>
+        <button class="settings-tab" data-tab="shift" role="tab">Kode Shift</button>
+        <button class="settings-tab" data-tab="umum" role="tab">Umum &amp; PAM</button>
+      </div>
+      <div id="settingsBody" class="px-5 py-4 overflow-y-auto flex-grow"></div>
+      <div class="px-5 py-3 settings-foot flex flex-wrap items-center justify-between gap-3">
+        <p id="settingsStatus" class="text-sm muted-copy" role="status" aria-live="polite"></p>
+        <div class="flex gap-3">
+          <button onclick="tutupPengaturan()" class="btn-secondary px-5 py-2">Batal</button>
+          <button onclick="simpanPengaturan()" id="settingsSaveBtn" class="btn-primary px-5 py-2 flex items-center justify-center">
+            <i data-lucide="save" class="icon"></i> Simpan Pengaturan
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script src="columns.js"></script>
+  <script src="absensi.js"></script>
+  <script src="absensi-pdf.js"></script>
   <script src="app.js"></script>
+  <script src="settings.js"></script>
+  <script src="laporan.js"></script>
 </body>
 </html>

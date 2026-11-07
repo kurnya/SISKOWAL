@@ -969,3 +969,209 @@ button:hover::before {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Layar Pengaturan ---------- */
+#settingsModal {
+  background-color: rgba(8, 15, 26, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.settings-card {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 1.2rem;
+}
+
+.settings-head,
+.settings-foot {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-foot {
+  border-bottom: 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-head button {
+  color: var(--text-secondary);
+}
+
+.settings-tab {
+  padding: 0.5rem 1rem;
+  border-radius: 0.7rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+}
+
+.settings-tab:hover {
+  background: var(--bg-muted);
+}
+
+.settings-tab.active {
+  background: var(--accent-soft);
+  color: var(--accent-color);
+  border-color: var(--border-color);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.settings-row input[type="text"] {
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.8rem;
+}
+
+.settings-row input.w-kode {
+  width: 4.5rem;
+  flex: none;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.settings-row input.w-jam {
+  width: 8.5rem;
+  flex: none;
+  text-align: center;
+}
+
+.settings-row input[readonly] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Kotak centang: input global memakai appearance:none, jadi dikembalikan di sini. */
+.settings-check input[type="checkbox"],
+.settings-check-lg input[type="checkbox"] {
+  appearance: auto;
+  width: 1.25rem;
+  min-height: 0;
+  height: 1.25rem;
+  padding: 0;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.settings-check {
+  display: flex;
+  align-items: center;
+  padding: 0 0.3rem;
+}
+
+.settings-check-lg {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.settings-check-lg input[type="checkbox"] {
+  flex: none;
+  margin-top: 0.2rem;
+}
+
+.row-btn {
+  flex: none;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-soft);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.row-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.row-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.row-btn-del:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.row-btn-spacer {
+  flex: none;
+  width: 2.2rem;
+}
+
+.settings-tab:focus-visible,
+.row-btn:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.settings-textarea {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 0.9rem;
+  padding: 0.72rem 0.95rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--bg-soft);
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.settings-textarea:focus {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+/* ---------- Laporan Absensi ---------- */
+.absensi-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.5rem;
+}
+
+.absensi-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.8rem;
+  background: var(--bg-soft);
+  cursor: pointer;
+}
+
+.absensi-item input[type="checkbox"] {
+  appearance: auto;
+  width: 1.15rem;
+  min-height: 0;
+  height: 1.15rem;
+  padding: 0;
+  margin-top: 0.15rem;
+  flex: none;
+  accent-color: var(--accent-color);
+}
+
+.absensi-item.dikecualikan {
+  opacity: 0.55;
+}
+
+.absensi-tag {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #b45309;
+}
