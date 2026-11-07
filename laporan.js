@@ -16,7 +16,8 @@ bulanNama.forEach((b, i) => {
 function absSetStatus(teks, tipe) {
   const el = document.getElementById("absStatus");
   el.textContent = teks;
-  el.className = "text-sm mt-1 " + (tipe === "error" ? "text-red-600" : tipe === "ok" ? "text-green-600" : "muted-copy");
+  el.className = "status-line " + (tipe === "error" ? "status-error" : tipe === "ok" ? "status-ok" : "");
+  if (tipe === "error") tampilToast(teks, tipe);
 }
 
 function absPeriodeTerpilih() {

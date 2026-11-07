@@ -25,7 +25,7 @@ Tanpa login: siapa pun yang tahu URL Web App dapat membaca dan menulis jadwal. J
 
 ## Laporan Absensi
 
-Panel **Laporan Absensi** (bagian bawah halaman) membuat PDF absensi A4 landscape dari jadwal yang sudah tersimpan:
+Tab **Laporan Absensi** (di bagian atas halaman, di samping tab Jadwal) membuat PDF absensi A4 landscape dari jadwal yang sudah tersimpan:
 
 1. Pilih **bulan akhir periode** dan tahun. Periodenya otomatis tanggal 16 bulan sebelumnya sampai tanggal 15 bulan itu.
 2. Klik **Muat Anggota**. Daftar anggota adalah gabungan kedua bulan. Hilangkan centang untuk mengecualikan anggota (mis. sudah tidak bertugas). Anggota yang hanya ada di salah satu bulan diberi tanda, dan selnya dikosongkan pada bulan ia tidak ada.

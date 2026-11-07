@@ -1,11 +1,5 @@
 lucide.createIcons();
 
-function togglePetunjuk() {
-  const box = document.getElementById("petunjuk");
-  box.classList.toggle("hidden");
-  lucide.createIcons();
-}
-
 const bulanNama = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const selectBulan = document.getElementById("bulan");
 
@@ -39,10 +33,22 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-function setStatus(teks, tipe) {
+// Notifikasi singkat di pojok layar. Pesan status tetap tertulis di baris status, jadi tidak ada yang hilang.
+let toastTimer = null;
+function tampilToast(teks, tipe) {
+  const el = document.getElementById("toast");
+  el.textContent = teks;
+  el.className = "toast " + (tipe === "error" ? "toast-error" : "toast-ok");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add("hidden"), tipe === "error" ? 8000 : 3500);
+}
+
+// Toast muncul untuk error, dan untuk keberhasilan bila toast = true (mis. jadwal tersimpan).
+function setStatus(teks, tipe, toast) {
   const el = document.getElementById("status");
   el.textContent = teks;
-  el.className = "text-sm mt-1 " + (tipe === "error" ? "text-red-600" : tipe === "ok" ? "text-green-600" : "muted-copy");
+  el.className = "status-line " + (tipe === "error" ? "status-error" : tipe === "ok" ? "status-ok" : "");
+  if (tipe === "error" || (tipe === "ok" && toast)) tampilToast(teks, tipe);
 }
 
 function kunciBulan() {
@@ -57,8 +63,8 @@ function renderPetunjuk() {
   const el = document.getElementById("petunjukIsi");
   el.innerHTML = shiftList.length
     ? shiftList
-        .map((s) => `<b>${escapeHtml(s.kode)}</b> = ${escapeHtml(s.jam === "-" ? s.keterangan || "Libur" : s.jam)}`)
-        .join(" &nbsp; | &nbsp; ")
+        .map((s) => `<span class="legend-chip"><b>${escapeHtml(s.kode)}</b> ${escapeHtml(s.jam === "-" ? s.keterangan || "Libur" : s.jam)}</span>`)
+        .join("")
     : "Belum ada kode shift.";
 }
 
@@ -108,7 +114,7 @@ async function generateTabel() {
   const tanggalRow = document.getElementById("tanggalRow");
   const tbody = document.getElementById("inputBody");
 
-  hariRow.innerHTML = "<th rowspan='2' class='border px-2 py-2 bg-slate-100 font-semibold'>Nama</th>";
+  hariRow.innerHTML = "<th rowspan='2' class='border px-2 py-2 font-semibold'>Nama</th>";
   tanggalRow.innerHTML = "";
   tbody.innerHTML = namaList.map((n) => `<tr><td class="border px-2 py-1 font-semibold">${escapeHtml(n)}</td></tr>`).join("");
 
@@ -116,12 +122,13 @@ async function generateTabel() {
     const tanggal = new Date(tahun, bulan, t);
     const hariPenuh = tanggal.toLocaleDateString("id-ID", { weekday: "long" }).toUpperCase();
     const hari = hariSingkat[hariPenuh] || hariPenuh.slice(0, 2);
-    hariRow.innerHTML += `<th class="border px-2 py-1">${hari}</th>`;
-    tanggalRow.innerHTML += `<th class="border px-2 py-1">${t}</th>`;
+    const akhirPekan = tanggal.getDay() === 0 || tanggal.getDay() === 6 ? " akhir-pekan" : "";
+    hariRow.innerHTML += `<th class="border px-2 py-1${akhirPekan}">${hari}</th>`;
+    tanggalRow.innerHTML += `<th class="border px-2 py-1${akhirPekan}">${t}</th>`;
 
     document.querySelectorAll("#inputTable tbody tr").forEach((tr) => {
       const td = document.createElement("td");
-      td.className = "border px-1 py-1";
+      td.className = "border px-1 py-1" + akhirPekan;
       const nama = tr.cells[0].textContent.trim();
       const id = `${nama}_${t}`;
       td.innerHTML = `<input type='text' maxlength='3' class='border rounded text-center' id='${escapeHtml(id)}' data-nama='${escapeHtml(nama)}' data-tgl='${t}' />`;
@@ -129,6 +136,9 @@ async function generateTabel() {
     });
   }
 
+  document.getElementById("emptyState").classList.add("hidden");
+  document.getElementById("tabelSection").classList.remove("hidden");
+  document.getElementById("judulTabel").textContent = `Jadwal ${bulanNama[bulan]} ${tahun}`;
   document.getElementById("inputContainer").classList.remove("hidden");
   document.getElementById("btnConvert").classList.remove("hidden");
   document.getElementById("hasil").classList.add("hidden");
@@ -137,6 +147,7 @@ async function generateTabel() {
   aktifkanNavigasi();
   bulanTabel = kunciBulan();
   tabelKotor = false;
+  setJadwalSiap(false); // sampai jadwal tersimpan bulan ini selesai dimuat
   await isiDariSpreadsheet();
 }
 
@@ -186,6 +197,25 @@ function isiTabel(rows) {
   return kodeAsing;
 }
 
+// Tabel baru boleh disimpan hanya setelah jadwal tersimpan bulan itu selesai dimuat. Tanpa ini, menekan
+// Simpan saat tabel masih kosong (memuat lambat, atau gagal) akan menimpa jadwal lama di spreadsheet.
+let jadwalSiap = false;
+
+function setJadwalSiap(siap) {
+  jadwalSiap = siap;
+  const kontainer = document.getElementById("inputContainer");
+  kontainer.classList.toggle("memuat", !siap);
+  kontainer.setAttribute("aria-busy", String(!siap));
+  document.getElementById("saveBtn").disabled = !siap;
+  document.getElementById("convertBtn").disabled = !siap;
+}
+
+function pastikanJadwalSiap() {
+  if (jadwalSiap) return true;
+  setStatus("Jadwal bulan ini belum selesai dimuat, jadi belum bisa disimpan. Tunggu sebentar, atau klik Buat Tabel lagi bila gagal.", "error");
+  return false;
+}
+
 async function isiDariSpreadsheet() {
   const bulan = bulanTabel;
   setStatus(`Memuat jadwal ${bulan}...`);
@@ -194,13 +224,17 @@ async function isiDariSpreadsheet() {
     // Pengguna mungkin sudah membuat tabel lain saat menunggu; abaikan hasil yang basi.
     if (bulan !== bulanTabel) return;
     const kodeAsing = isiTabel(data.rows);
+    setJadwalSiap(true);
     const peringatan = kodeAsing ? ` ${kodeAsing} sel berkode tidak dikenal (bertanda merah).` : "";
     setStatus(
       (data.rows.length ? `Jadwal ${bulan} dimuat dari spreadsheet.` : `Belum ada jadwal tersimpan untuk ${bulan}.`) + peringatan,
       kodeAsing ? "error" : "ok"
     );
   } catch (err) {
-    setStatus("Gagal memuat jadwal: " + err.message, "error");
+    // Penyimpanan tetap nonaktif: menyimpan tabel kosong akan menimpa jadwal lama yang gagal dimuat.
+    if (bulan === bulanTabel) {
+      setStatus("Gagal memuat jadwal: " + err.message + ". Klik Buat Tabel untuk mencoba lagi; penyimpanan dinonaktifkan agar jadwal lama tidak tertimpa.", "error");
+    }
   }
 }
 
@@ -254,7 +288,7 @@ async function buatTabelBaru() {
 
 // Mengirim isi tabel ke spreadsheet. Mengembalikan true bila berhasil.
 async function kirimJadwal() {
-  if (!tabelSesuaiPilihan()) return false;
+  if (!tabelSesuaiPilihan() || !pastikanJadwalSiap()) return false;
   const bulan = bulanTabel;
   const rows = namaList.map((nama) => {
     const hari = {};
@@ -267,7 +301,7 @@ async function kirimJadwal() {
   try {
     await api.simpanJadwal(bulan, rows);
     tabelKotor = false;
-    setStatus(`Jadwal ${bulan} tersimpan di spreadsheet.`, "ok");
+    setStatus(`Jadwal ${bulan} tersimpan di spreadsheet.`, "ok", true);
     muatDaftarBulan(); // bulan ini mungkin baru muncul di daftar jadwal tersimpan
     return true;
   } catch (err) {
@@ -284,7 +318,7 @@ async function simpanKeSpreadsheet() {
   try {
     await kirimJadwal();
   } finally {
-    btn.disabled = false;
+    btn.disabled = !jadwalSiap;
     btn.innerHTML = original;
     lucide.createIcons();
   }
@@ -325,7 +359,7 @@ function aktifkanNavigasi() {
 // Konversi otomatis menyimpan jadwal ke spreadsheet lebih dulu. Bila penyimpanan gagal,
 // hasil konversi tetap ditampilkan dan pesan gagalnya tetap terlihat di status.
 async function konversiJadwal() {
-  if (!tabelSesuaiPilihan()) return;
+  if (!tabelSesuaiPilihan() || !pastikanJadwalSiap()) return;
   const btn = document.getElementById("convertBtn");
   const originalText = btn.innerHTML;
   btn.innerHTML = '<span class="spinner"></span> Menyimpan & memproses...';
@@ -335,10 +369,10 @@ async function konversiJadwal() {
     const tersimpan = await kirimJadwal();
     runKonversiJadwal();
     document.getElementById("hasil").classList.add("slide-in");
-    if (tersimpan) setStatus(`Jadwal ${bulanTabel} tersimpan di spreadsheet dan sudah dikonversi.`, "ok");
+    if (tersimpan) setStatus(`Jadwal ${bulanTabel} tersimpan di spreadsheet dan sudah dikonversi.`, "ok", true);
   } finally {
     btn.innerHTML = originalText;
-    btn.disabled = false;
+    btn.disabled = !jadwalSiap;
   }
 }
 
