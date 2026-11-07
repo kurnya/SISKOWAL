@@ -1,6 +1,6 @@
-// Tab utama: Jadwal | Laporan Absensi. Tab terakhir yang dibuka diingat di browser ini.
+// Tab utama: Jadwal Security | OB | Laporan Absensi. Tab terakhir yang dibuka diingat di browser ini.
 const TAB_KEY = "siskowal.tab";
-const TAB_UTAMA = ["jadwal", "absensi"];
+const TAB_UTAMA = ["jadwal", "ob", "absensi"];
 
 function pilihTabUtama(nama, fokus) {
   if (!TAB_UTAMA.includes(nama)) nama = "jadwal";
@@ -12,7 +12,9 @@ function pilihTabUtama(nama, fokus) {
     if (aktif && fokus) b.focus();
   });
   document.getElementById("tabJadwal").classList.toggle("hidden", nama !== "jadwal");
+  document.getElementById("tabOB").classList.toggle("hidden", nama !== "ob");
   document.getElementById("tabAbsensi").classList.toggle("hidden", nama !== "absensi");
+  if (nama === "ob" && typeof obAktifkan === "function") obAktifkan();
   try {
     localStorage.setItem(TAB_KEY, nama);
   } catch (e) { /* penyimpanan browser tidak tersedia: abaikan */ }

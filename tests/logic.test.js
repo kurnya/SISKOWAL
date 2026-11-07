@@ -194,9 +194,11 @@ test("periodeAbsensi: 16 bulan lalu s.d. 15 bulan dipilih", () => {
   assert.equal(p.prevKey, "2026-08");
   assert.equal(p.curKey, "2026-09");
   assert.equal(p.hari.length, 31); // 16-31 Agu (16) + 1-15 Sep (15)
-  assert.deepEqual(p.hari[0], { tgl: 16, bulan: "prev" });
-  assert.deepEqual(p.hari[15], { tgl: 31, bulan: "prev" });
-  assert.deepEqual(p.hari[16], { tgl: 1, bulan: "cur" });
+  assert.deepEqual(p.hari[0], { tgl: 16, bulan: "prev", iso: "2026-08-16" });
+  assert.deepEqual(p.hari[15], { tgl: 31, bulan: "prev", iso: "2026-08-31" });
+  assert.deepEqual(p.hari[16], { tgl: 1, bulan: "cur", iso: "2026-09-01" });
+  assert.equal(p.awalIso, "2026-08-16");
+  assert.equal(p.akhirIso, "2026-09-15");
   assert.equal(p.mulaiLabel, "16 AGUSTUS 2026");
   assert.equal(p.selesaiLabel, "15 SEPTEMBER 2026");
   assert.equal(p.tanggalLaporan, "16 September 2026");
@@ -282,4 +284,125 @@ test("masterToSheetValues menyertakan kolom config laporan", () => {
   assert.ok(kunci.includes("absensi_catatan") && kunci.includes("absensi_kota"));
   assert.deepEqual(L.masterToSheetValues(m).config.find((r) => r[0] === "absensi_kota"), ["absensi_kota", "Depok"]);
   assert.equal(L.validateMaster(m), null);
+});
+
+// ---------- Modul OB ----------
+const K = require("../ob.js");
+
+const LIBUR_2026 = [
+  { tanggal: "2026-08-17", keterangan: "Proklamasi Kemerdekaan", jenis: "Nasional", libur: true },
+  { tanggal: "2026-08-25", keterangan: "Maulid Nabi Muhammad saw.", jenis: "Nasional", libur: true },
+  { tanggal: "2026-03-20", keterangan: "Cuti Bersama Idulfitri 1447 H", jenis: "Cuti Bersama", libur: false },
+  { tanggal: "2026-03-21", keterangan: "Idulfitri 1447 H (hari pertama)", jenis: "Nasional", libur: true }
+];
+const OB_CONTOH = [
+  { id: "OB001", nama: "Firdaus", jabatan: "ANGGOTA", mulai: "", selesai: "" },
+  { id: "OB002", nama: "Rahmat Hidayat", jabatan: "ANGGOTA", mulai: "", selesai: "" },
+  { id: "OB003", nama: "Zulkarnain", jabatan: "BACKUP", mulai: "", selesai: "" }
+];
+
+test("statusHari: hanya Sabtu, Minggu, dan libur nasional yang otomatis libur", () => {
+  assert.deepEqual(K.statusHari("2026-08-19", LIBUR_2026), { libur: false, alasan: "", info: "", jenisInfo: "" }); // Rabu biasa
+  assert.equal(K.statusHari("2026-08-22", LIBUR_2026).alasan, "Sabtu");
+  assert.equal(K.statusHari("2026-08-23", LIBUR_2026).alasan, "Minggu");
+  const hut = K.statusHari("2026-08-17", LIBUR_2026); // Senin, libur nasional
+  assert.equal(hut.libur, true);
+  assert.equal(hut.alasan, "Proklamasi Kemerdekaan");
+  // libur nasional yang jatuh di Sabtu tetap memakai nama hari rayanya
+  assert.equal(K.statusHari("2026-03-21", LIBUR_2026).alasan, "Idulfitri 1447 H (hari pertama)");
+});
+
+test("statusHari: cuti bersama TIDAK otomatis libur, hanya info", () => {
+  const cb = K.statusHari("2026-03-20", LIBUR_2026); // Jumat, cuti bersama
+  assert.equal(cb.libur, false);
+  assert.equal(cb.info, "Cuti Bersama Idulfitri 1447 H");
+  assert.equal(cb.jenisInfo, "Cuti Bersama");
+  // bila perusahaan mengubahnya jadi libur (libur = true), otomatis libur
+  const diubah = LIBUR_2026.map((h) => (h.tanggal === "2026-03-20" ? { ...h, libur: true } : h));
+  assert.equal(K.statusHari("2026-03-20", diubah).libur, true);
+});
+
+test("kodeOB: bawaan, catatan, backup, lembur, masa tugas", () => {
+  const [firdaus, , zul] = OB_CONTOH;
+  const kerja = { libur: false }, libur = { libur: true };
+  assert.equal(K.kodeOB(firdaus, "2026-08-19", kerja, []), "P");
+  assert.equal(K.kodeOB(firdaus, "2026-08-22", libur, []), "O");
+  assert.equal(K.kodeOB(zul, "2026-08-19", kerja, []), "-"); // backup tanpa tugas
+  const sakit = [{ idOb: "OB001", jenis: "S", idBackup: "OB003" }];
+  assert.equal(K.kodeOB(firdaus, "2026-08-26", kerja, sakit), "S");
+  assert.equal(K.kodeOB(zul, "2026-08-26", kerja, sakit), "P"); // backup menggantikan
+  const lembur = [{ idOb: "OB001", jenis: "LEMBUR", idBackup: "" }];
+  assert.equal(K.kodeOB(firdaus, "2026-08-17", libur, lembur), "P");
+  assert.equal(K.kodeOB(firdaus, "2026-08-19", kerja, [{ idOb: "OB001", jenis: "CT", idBackup: "" }]), "CT");
+  assert.equal(K.kodeOB(firdaus, "2026-08-19", kerja, [{ idOb: "OB001", jenis: "O", idBackup: "" }]), "O"); // libur lain yang dicatat
+  // di luar masa tugas
+  const berhenti = { ...firdaus, selesai: "2026-08-20" };
+  assert.equal(K.kodeOB(berhenti, "2026-08-21", kerja, []), "-");
+  assert.equal(K.kodeOB(berhenti, "2026-08-20", kerja, []), "P");
+  const baruMulai = { ...firdaus, mulai: "2026-09-01" };
+  assert.equal(K.kodeOB(baruMulai, "2026-08-31", kerja, []), "-");
+});
+
+test("barisPeriode: mereproduksi contoh laporan OB 16 Agu - 15 Sep 2026", () => {
+  const periode = A.periodeAbsensi(2026, 8);
+  const catatan = [
+    { tanggal: "2026-08-17", idOb: "OB001", jenis: "LEMBUR", idBackup: "" }, // HUT RI
+    { tanggal: "2026-08-17", idOb: "OB002", jenis: "LEMBUR", idBackup: "" },
+    { tanggal: "2026-08-25", idOb: "OB001", jenis: "LEMBUR", idBackup: "" }, // Maulid Nabi
+    { tanggal: "2026-08-25", idOb: "OB002", jenis: "LEMBUR", idBackup: "" },
+    { tanggal: "2026-08-26", idOb: "OB001", jenis: "S", idBackup: "OB003" },
+    { tanggal: "2026-08-27", idOb: "OB001", jenis: "S", idBackup: "OB003" }
+  ];
+  const baris = K.barisPeriode({ periode, ob: OB_CONTOH, libur: LIBUR_2026, catatan, terpilihIds: ["OB001", "OB002", "OB003"] });
+  const gabung = (b) => b.kode.join(" ");
+  assert.equal(gabung(baris[0]), "O P P P P P O O P P S S P O O P P P P P O O P P P P P O O P P"); // FIRDAUS
+  assert.equal(gabung(baris[1]), "O P P P P P O O P P P P P O O P P P P P O O P P P P P O O P P"); // RAHMAT HIDAYAT
+  assert.equal(gabung(baris[2]), "- - - - - - - - - - P P - - - - - - - - - - - - - - - - - - -"); // ZULKARNAIN (backup)
+  assert.deepEqual(baris.map((b) => [b.nama, b.jabatan]), [["FIRDAUS", "ANGGOTA"], ["RAHMAT HIDAYAT", "ANGGOTA"], ["ZULKARNAIN", "BACKUP"]]);
+});
+
+test("barisPeriode: tanpa catatan, 17 dan 25 Agustus libur (tanggal merah), cuti bersama tetap masuk", () => {
+  const periode = A.periodeAbsensi(2026, 8);
+  const [b] = K.barisPeriode({ periode, ob: OB_CONTOH, libur: LIBUR_2026, catatan: [], terpilihIds: ["OB001"] });
+  const idx = (iso) => periode.hari.findIndex((h) => h.iso === iso);
+  assert.equal(b.kode[idx("2026-08-17")], "O");
+  assert.equal(b.kode[idx("2026-08-25")], "O");
+  const periodeApr = A.periodeAbsensi(2026, 3); // 16 Mar - 15 Apr, memuat 20 Mar (cuti bersama) dan 21 Mar (Idulfitri)
+  const apr = K.barisPeriode({ periode: periodeApr, ob: OB_CONTOH, libur: LIBUR_2026, catatan: [], terpilihIds: ["OB001"] })[0];
+  const idx2 = (iso) => periodeApr.hari.findIndex((h) => h.iso === iso);
+  assert.ok(idx2("2026-03-20") >= 0);
+  assert.equal(apr.kode[idx2("2026-03-20")], "P"); // cuti bersama Jumat: tetap masuk bila tidak dicatat
+  assert.equal(apr.kode[idx2("2026-03-21")], "O"); // Idulfitri (libur nasional, Sabtu)
+});
+
+test("anggotaPeriode: OB yang berhenti tetap muncul untuk periode lamanya, urut ANGGOTA lalu BACKUP", () => {
+  const ob = [
+    { id: "OB003", nama: "Zul", jabatan: "BACKUP", mulai: "", selesai: "" },
+    { id: "OB001", nama: "Lama", jabatan: "ANGGOTA", mulai: "", selesai: "2026-08-31" }, // berhenti 31 Agu
+    { id: "OB004", nama: "Baru", jabatan: "ANGGOTA", mulai: "2026-09-01", selesai: "" },
+    { id: "OB005", nama: "Terlalu lama", jabatan: "ANGGOTA", mulai: "", selesai: "2026-07-01" }
+  ];
+  const sep = K.anggotaPeriode(ob, A.periodeAbsensi(2026, 8)); // 16 Agu - 15 Sep
+  assert.deepEqual(sep.map((o) => o.nama), ["Lama", "Baru", "Zul"]);
+  assert.deepEqual(sep.map((o) => o.sebagian), [true, true, false]);
+  const okt = K.anggotaPeriode(ob, A.periodeAbsensi(2026, 9)); // 16 Sep - 15 Okt
+  assert.deepEqual(okt.map((o) => o.nama), ["Baru", "Zul"]); // Lama sudah tidak ikut
+  const lamaPeriode = K.anggotaPeriode(ob, A.periodeAbsensi(2026, 6)); // 16 Jun - 15 Jul
+  assert.ok(lamaPeriode.some((o) => o.nama === "Terlalu lama"), "riwayat lama tidak hilang");
+});
+
+test("legendaOB & labelCatatan & selKalender", () => {
+  const l = K.legendaOB({ absensi_jam_kerja: "Jam Kerja 8 Jam", ob_jam_masuk: "08.00-17.00" });
+  assert.deepEqual(l.kiri, ["P : Jadwal Masuk", "", "O : Off/Libur"]);
+  assert.deepEqual(l.kanan, ["Jam Kerja 8 Jam", "Masuk Pagi Pukul 08.00 WIB – 17.00 WIB"]);
+
+  const peta = Object.fromEntries(OB_CONTOH.map((o) => [o.id, o]));
+  assert.equal(K.labelCatatan({ idOb: "OB001", jenis: "S", idBackup: "OB003" }, peta), "Sakit · Firdaus → Zulkarnain");
+  assert.equal(K.labelCatatan({ idOb: "OB002", jenis: "LEMBUR", idBackup: "" }, peta), "Lembur · Rahmat Hidayat");
+
+  const sel = K.selKalender(2026, 7); // Agustus 2026: 1 Agustus = Sabtu
+  assert.equal(sel.length % 7, 0);
+  assert.equal(sel.findIndex((s) => s && s.tgl === 1), 5); // Sen..Jum kosong, Sabtu di kolom ke-6
+  assert.equal(sel.filter(Boolean).length, 31);
+  assert.equal(sel.find((s) => s && s.tgl === 17).iso, "2026-08-17");
 });

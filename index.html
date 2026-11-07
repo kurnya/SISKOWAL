@@ -28,7 +28,10 @@
 
       <nav class="main-tabs" role="tablist" aria-label="Menu utama">
         <button id="tabBtnJadwal" class="main-tab active" role="tab" aria-selected="true" aria-controls="tabJadwal" data-tab="jadwal">
-          <i data-lucide="calendar-days" class="icon"></i> Jadwal
+          <i data-lucide="calendar-days" class="icon"></i> Jadwal Security
+        </button>
+        <button id="tabBtnOB" class="main-tab" role="tab" aria-selected="false" aria-controls="tabOB" data-tab="ob">
+          <i data-lucide="calendar-check" class="icon"></i> OB
         </button>
         <button id="tabBtnAbsensi" class="main-tab" role="tab" aria-selected="false" aria-controls="tabAbsensi" data-tab="absensi">
           <i data-lucide="clipboard-check" class="icon"></i> Laporan Absensi
@@ -163,13 +166,69 @@
       </section>
     </section>
 
+    <!-- ===================== TAB OB (KALENDER) ===================== -->
+    <section id="tabOB" role="tabpanel" aria-labelledby="tabBtnOB" class="hidden">
+      <div class="card" style="margin-top: 0;">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Kalender OB</h2>
+            <p class="card-sub">Hari kerja otomatis <b>masuk</b>. Sabtu, Minggu, dan tanggal merah otomatis <b>libur</b>. Klik sebuah tanggal untuk menambah catatan: sakit, izin, cuti, libur, backup, atau lembur.</p>
+          </div>
+        </div>
+
+        <p id="obStatus" class="status-line" role="status" aria-live="polite"></p>
+
+        <div class="cal-toolbar">
+          <div class="cal-nav">
+            <button id="obPrev" type="button" class="btn-secondary btn-compact cal-arrow" aria-label="Bulan sebelumnya">&#8249;</button>
+            <div class="field">
+              <label for="obBulan" class="sr-only">Bulan</label>
+              <div class="field-shell">
+                <select id="obBulan"></select>
+                <i data-lucide="chevron-down" class="field-arrow"></i>
+              </div>
+            </div>
+            <div class="field field-narrow">
+              <label for="obTahun" class="sr-only">Tahun</label>
+              <div class="field-shell"><input type="number" id="obTahun" /></div>
+            </div>
+            <button id="obNext" type="button" class="btn-secondary btn-compact cal-arrow" aria-label="Bulan berikutnya">&#8250;</button>
+            <button id="obHariIni" type="button" class="btn-secondary btn-compact">Bulan ini</button>
+          </div>
+          <div class="cal-save">
+            <span id="obKotor" class="badge-kotor hidden">Belum disimpan</span>
+            <button id="obSimpan" type="button" class="btn-primary" disabled>
+              <i data-lucide="save" class="icon"></i> Simpan catatan bulan ini
+            </button>
+          </div>
+        </div>
+
+        <div id="obKalenderWrap" class="cal-wrap">
+          <div class="cal-head" aria-hidden="true">
+            <span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span class="cal-head-libur">Sab</span><span class="cal-head-libur">Min</span>
+          </div>
+          <div id="obKalender" class="cal-grid"></div>
+        </div>
+
+        <div class="cal-legend" aria-label="Arti warna kalender">
+          <span><i class="cal-dot cal-dot-merah"></i> Libur (Minggu / tanggal merah)</span>
+          <span><i class="cal-dot cal-dot-sabtu"></i> Sabtu</span>
+          <span><i class="cal-dot cal-dot-cuti"></i> Cuti bersama (tetap masuk kecuali dicatat)</span>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== TAB LAPORAN ABSENSI ===================== -->
     <section id="tabAbsensi" role="tabpanel" aria-labelledby="tabBtnAbsensi" class="hidden">
       <div id="laporanAbsensi" class="card">
         <div class="card-head">
           <div>
             <h2 class="card-title">Laporan Absensi</h2>
-            <p class="card-sub">Periode dari tanggal 16 bulan sebelumnya sampai tanggal 15 bulan yang dipilih. Datanya diambil dari jadwal yang sudah tersimpan.</p>
+            <p id="absSubjudul" class="card-sub">Periode dari tanggal 16 bulan sebelumnya sampai tanggal 15 bulan yang dipilih. Datanya diambil dari jadwal yang sudah tersimpan.</p>
+          </div>
+          <div class="seg" role="tablist" aria-label="Jenis laporan">
+            <button id="absJenisSecurity" type="button" class="seg-btn active" role="tab" aria-selected="true" data-jenis="security">Security</button>
+            <button id="absJenisOb" type="button" class="seg-btn" role="tab" aria-selected="false" data-jenis="ob">OB</button>
           </div>
         </div>
 
@@ -198,7 +257,7 @@
           <p class="card-sub">Hilangkan centang untuk mengecualikan anggota, misalnya yang sudah tidak bertugas di bulan ini.</p>
           <div id="absList" class="absensi-list"></div>
 
-          <label class="absensi-item absensi-pam">
+          <label id="absPamWrap" class="absensi-item absensi-pam">
             <input type="checkbox" id="absPam" />
             <span><b>Sertakan baris PAM</b><span class="block text-sm muted-copy">Nama diambil dari Pengaturan (Nama PAM), kode M setiap hari.</span></span>
           </label>
@@ -219,6 +278,55 @@
   <footer class="app-footer">
     <div class="app-shell">Dibuat oleh <b>DIMAS KURNIAWAN</b></div>
   </footer>
+
+  <div id="obDialog" class="fixed inset-0 hidden items-start justify-center z-50 p-3 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="obDialogJudul">
+    <div class="settings-card shadow-2xl w-full md:w-2/3 lg:w-1/2 my-8" style="overflow: visible;">
+      <div class="flex justify-between items-start px-5 py-3 settings-head">
+        <div>
+          <h3 id="obDialogJudul" class="text-lg font-semibold">Tanggal</h3>
+          <p id="obDialogStatus" class="text-sm muted-copy"></p>
+        </div>
+        <button type="button" onclick="obTutupDialog()" class="text-2xl font-bold" aria-label="Tutup">&times;</button>
+      </div>
+
+      <div class="px-5 py-4">
+        <div class="group-title">Catatan tanggal ini</div>
+        <ul id="obCatatanHari" class="catatan-list"></ul>
+
+        <div class="group-title mt-5" id="obFormJudul">Tambah catatan</div>
+        <div class="toolbar-row">
+          <div class="field field-grow">
+            <label for="obNama" class="field-label" id="obNamaLabel">Nama OB</label>
+            <div class="field-shell">
+              <select id="obNama"></select>
+              <i data-lucide="chevron-down" class="field-arrow"></i>
+            </div>
+          </div>
+          <div class="field field-grow" id="obJenisWrap">
+            <label for="obJenis" class="field-label">Keterangan</label>
+            <div class="field-shell">
+              <select id="obJenis"></select>
+              <i data-lucide="chevron-down" class="field-arrow"></i>
+            </div>
+          </div>
+          <div class="field field-grow" id="obBackupWrap">
+            <label for="obBackup" class="field-label">Backup (pengganti)</label>
+            <div class="field-shell">
+              <select id="obBackup"></select>
+              <i data-lucide="chevron-down" class="field-arrow"></i>
+            </div>
+          </div>
+        </div>
+        <p id="obFormPesan" class="text-sm text-red-600 mt-2"></p>
+        <button type="button" id="obTambah" class="btn-secondary mt-3"><i data-lucide="plus" class="icon"></i> Tambah catatan</button>
+      </div>
+
+      <div class="px-5 py-3 settings-foot flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm muted-copy">Catatan baru tersimpan ke spreadsheet setelah menekan <b>Simpan catatan bulan ini</b>.</p>
+        <button type="button" onclick="obTutupDialog()" class="btn-primary">Selesai</button>
+      </div>
+    </div>
+  </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
@@ -243,9 +351,11 @@
         </h3>
         <button onclick="tutupPengaturan()" class="text-2xl font-bold" aria-label="Tutup">&times;</button>
       </div>
-      <div class="settings-tabs px-5 pt-3 flex gap-2" role="tablist">
-        <button class="settings-tab" data-tab="petugas" role="tab">Petugas</button>
+      <div class="settings-tabs px-5 pt-3 flex flex-wrap gap-2" role="tablist">
+        <button class="settings-tab" data-tab="petugas" role="tab">Petugas Security</button>
         <button class="settings-tab" data-tab="shift" role="tab">Kode Shift</button>
+        <button class="settings-tab" data-tab="ob" role="tab">OB</button>
+        <button class="settings-tab" data-tab="libur" role="tab">Hari Libur</button>
         <button class="settings-tab" data-tab="umum" role="tab">Umum &amp; PAM</button>
       </div>
       <div id="settingsBody" class="px-5 py-4 overflow-y-auto flex-grow"></div>
@@ -264,11 +374,13 @@
   <script src="config.js"></script>
   <script src="api.js"></script>
   <script src="columns.js"></script>
+  <script src="ob.js"></script>
   <script src="absensi.js"></script>
   <script src="absensi-pdf.js"></script>
   <script src="app.js"></script>
   <script src="settings.js"></script>
   <script src="laporan.js"></script>
+  <script src="ob-ui.js"></script>
   <script src="tabs.js"></script>
   <script src="cselect.js"></script>
 </body>

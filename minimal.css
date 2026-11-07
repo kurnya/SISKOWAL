@@ -329,6 +329,8 @@ th { font-weight: 600; }
   color: var(--text-primary);
   font-size: 0.95rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  /* Notifikasi tidak boleh menutupi tombol di bawahnya (mis. Simpan di jendela Pengaturan). */
+  pointer-events: none;
 }
 .toast-ok { border-left-color: var(--success-color); }
 .toast-error { border-left-color: var(--danger-color); }
@@ -429,3 +431,161 @@ input[type="number"] { text-align: left; }
   .cselect-list { max-height: min(18rem, 50vh); }
   .cselect-list li { min-height: 2.75rem; }
 }
+
+/* ---------- Kalender OB ---------- */
+.cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; margin-bottom: 1rem; }
+.cal-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.cal-nav .field { min-width: 9.5rem; }
+.cal-nav .field-narrow { width: 6.5rem; min-width: 6.5rem; }
+.cal-arrow { width: 2.5rem; padding: 0; font-size: 1.5rem; line-height: 1; }
+.cal-save { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+
+.badge-kotor {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+[data-theme="dark"] .badge-kotor { background: #3b2f12; color: #fbbf24; }
+
+.cal-wrap { border: 1px solid var(--border-color); border-radius: 0.75rem; overflow: hidden; background: var(--bg-secondary); }
+.cal-wrap.memuat { opacity: 0.55; pointer-events: none; }
+
+.cal-head,
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cal-head { background: var(--bg-muted); font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-align: center; }
+.cal-head span { padding: 0.55rem 0; }
+.cal-head .cal-head-libur { color: var(--danger-color); }
+
+.cal-kosong { min-height: 6.5rem; background: var(--bg-soft); border-top: 1px solid var(--border-color); border-left: 1px solid var(--border-color); }
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  min-height: 6.5rem;
+  padding: 0.4rem 0.45rem;
+  text-align: left;
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  border-left: 1px solid var(--border-color);
+  border-radius: 0;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+}
+.cal-day:hover { background: var(--accent-soft); }
+.cal-day.sabtu { background: var(--weekend); }
+.cal-day:nth-child(7n + 1),
+.cal-kosong:nth-child(7n + 1) { border-left: 0; }
+.cal-day:focus-visible { outline-offset: -3px; }
+
+.cal-num { align-self: flex-start; font-weight: 700; }
+.cal-day.libur .cal-num { color: var(--danger-color); }
+.cal-day.hari-ini .cal-num { padding: 0 0.5rem; border-radius: 999px; background: var(--accent-color); color: var(--btn-fg); }
+.cal-ket { font-size: 0.72rem; line-height: 1.2; font-weight: 600; color: var(--danger-color); }
+.cal-info { font-size: 0.72rem; line-height: 1.2; font-weight: 600; color: #b45309; }
+[data-theme="dark"] .cal-info { color: #fbbf24; }
+
+/* Label catatan: warna hanya sebagai penanda jenis; teks tetap menyebut jenisnya */
+.chip {
+  --c: var(--text-secondary);
+  display: block;
+  overflow: hidden;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  color: var(--c);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip-S { --c: #dc2626; }
+.chip-I { --c: #d97706; }
+.chip-TK { --c: #9f1239; }
+.chip-CT { --c: #2563eb; }
+.chip-O { --c: #64748b; }
+.chip-LEMBUR { --c: #15803d; }
+.chip-backup { --c: var(--accent-color); }
+[data-theme="dark"] .chip-S { --c: #f87171; }
+[data-theme="dark"] .chip-I { --c: #fbbf24; }
+[data-theme="dark"] .chip-TK { --c: #fb7185; }
+[data-theme="dark"] .chip-CT { --c: #60a5fa; }
+[data-theme="dark"] .chip-O { --c: #94a3b8; }
+[data-theme="dark"] .chip-LEMBUR { --c: #4ade80; }
+
+.cal-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-secondary); }
+.cal-dot { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.35rem; border-radius: 50%; vertical-align: middle; border: 1px solid var(--border-color); }
+.cal-dot-merah { background: var(--danger-color); border-color: transparent; }
+.cal-dot-sabtu { background: var(--weekend); }
+.cal-dot-cuti { background: #f59e0b; border-color: transparent; }
+
+@media (max-width: 640px) {
+  .cal-day, .cal-kosong { min-height: 4.6rem; padding: 0.3rem 0.25rem; }
+  .cal-ket, .cal-info { display: none; }
+  .chip { font-size: 0.62rem; padding: 0.05rem 0.2rem; }
+  .cal-save { width: 100%; justify-content: space-between; }
+}
+
+/* ---------- Jendela catatan harian ---------- */
+.catatan-list { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.catatan-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.65rem;
+  background: var(--bg-soft);
+}
+
+/* ---------- Pilihan jenis laporan & pil ---------- */
+.seg { display: inline-flex; overflow: hidden; border: 1px solid var(--border-color); border-radius: 0.7rem; background: var(--bg-secondary); }
+.seg-btn { min-height: 2.5rem; padding: 0.4rem 1.2rem; border-radius: 0; background: transparent; color: var(--text-secondary); font-weight: 600; }
+.seg-btn.active,
+[data-theme="dark"] .seg-btn.active { background: var(--accent-soft); color: var(--accent-color); }
+
+.pill {
+  padding: 0.3rem 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pill:hover { background: var(--bg-muted); }
+.pill-aktif,
+.pill-aktif:hover { background: var(--accent-color); border-color: transparent; color: var(--btn-fg); }
+.pill-backup { background: var(--accent-soft); color: var(--accent-color); }
+.pill-nasional { color: var(--danger-color); }
+.pill-cuti { color: #b45309; }
+[data-theme="dark"] .pill-cuti { color: #fbbf24; }
+.pill-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+/* ---------- Pengaturan: baris OB & hari libur ---------- */
+.settings-row-ob,
+.settings-row-libur { flex-wrap: wrap; gap: 0.5rem; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.8rem; }
+.ob-nama { flex: 1 1 11rem; }
+.ob-tgl { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.75rem; color: var(--text-secondary); }
+.ob-tgl input,
+.settings-row-libur input[type="date"] { min-height: 2.4rem; min-width: 9.5rem; padding: 0.3rem 0.5rem; font-size: 0.85rem; }
+.ob-aksi { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; }
+.ob-status { width: 100%; font-size: 0.8rem; font-weight: 600; color: var(--danger-color); }
+.libur-ket { flex: 1 1 10rem; }
+.libur-centang { white-space: nowrap; align-items: center; }
+
+/* Kolom tanggal di Pengaturan: lebar tetap supaya sebaris dengan isian lain */
+.settings-row-ob input[type="date"],
+.settings-row-libur input[type="date"] { width: 10.5rem; flex: none; }
+.ob-tgl { flex: none; }

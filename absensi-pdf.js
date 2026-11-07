@@ -18,7 +18,7 @@
     }
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
-    doc.text("JADWAL ABSENSI SECURITY", tengah, 16, { align: "center" });
+    doc.text(data.judul || "JADWAL ABSENSI SECURITY", tengah, 16, { align: "center" });
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.text(c.perusahaan || "", tengah, 24, { align: "center" });
@@ -98,7 +98,7 @@
     y += 8;
     doc.setFont("helvetica", "normal");
     doc.text("NOTE :", 80, y + 4);
-    const catatan = doc.splitTextToSize(c.absensi_catatan || "", 160);
+    const catatan = doc.splitTextToSize((data.catatan !== undefined ? data.catatan : c.absensi_catatan) || "", 160);
     const tinggiKotak = Math.max(10, catatan.length * 4.6 + 4);
     doc.setLineWidth(0.2);
     doc.rect(100, y - 2, 168, tinggiKotak);

@@ -1,13 +1,20 @@
-// Layar Pengaturan: ubah petugas, kode shift, dan data umum/PAM langsung dari web.
+// Layar Pengaturan: ubah petugas security, kode shift, OB, hari libur, dan data umum/PAM langsung dari web.
 // Perubahan dikerjakan pada salinan (draft) dan baru dikirim saat "Simpan Pengaturan".
 
 let draft = null;
 let tabAktif = "petugas";
+let liburTahun = "semua"; // filter tahun di tab Hari Libur
+const JENIS_LIBUR_URUT = ["Nasional", "Cuti Bersama", "Lainnya"];
 
 function settingsMsg(teks, tipe) {
   const el = document.getElementById("settingsStatus");
   el.textContent = teks;
   el.className = "text-sm " + (tipe === "error" ? "text-red-600" : tipe === "ok" ? "text-green-600" : "muted-copy");
+}
+
+function hariIniIso() {
+  const d = new Date();
+  return kalenderOb.iso(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 function bukaPengaturan() {
@@ -30,6 +37,13 @@ function bukaPengaturan() {
       )
     }
   };
+  // OB dan hari libur hanya ada bila Apps Script sudah versi terbaru. Bila tidak, tidak dikirim (sheet dibiarkan).
+  if (Array.isArray(masterData.ob)) draft.ob = masterData.ob.map((o) => ({ ...o }));
+  if (Array.isArray(masterData.libur)) draft.libur = masterData.libur.map((h) => ({ ...h }));
+
+  const tahunIni = String(new Date().getFullYear());
+  liburTahun = (draft.libur || []).some((h) => h.tanggal.startsWith(tahunIni)) ? tahunIni : "semua";
+
   settingsMsg("");
   pilihTab("petugas");
   const modal = document.getElementById("settingsModal");
@@ -60,6 +74,70 @@ function tombolBaris(i, total, bisaHapus) {
     <button type="button" class="row-btn" data-action="up" data-i="${i}" aria-label="Naikkan" ${i === 0 ? "disabled" : ""}>↑</button>
     <button type="button" class="row-btn" data-action="down" data-i="${i}" aria-label="Turunkan" ${i === total - 1 ? "disabled" : ""}>↓</button>
     ${bisaHapus ? `<button type="button" class="row-btn row-btn-del" data-action="hapus" data-i="${i}" aria-label="Hapus">✕</button>` : `<span class="row-btn-spacer"></span>`}`;
+}
+
+const PESAN_BACKEND_LAMA =
+  '<p class="text-sm text-red-600">Bagian ini butuh Apps Script versi terbaru. Tempel <b>Code.gs</b> dan <b>Logic.gs</b> yang baru, jalankan <b>setup</b> sekali, lalu deploy versi baru dan muat ulang halaman.</p>';
+
+function renderOB(body) {
+  if (!draft.ob) {
+    body.innerHTML = PESAN_BACKEND_LAMA;
+    return;
+  }
+  const hariIni = hariIniIso();
+  body.innerHTML = `
+    <p class="text-sm muted-copy mb-3">Daftar OB untuk kalender dan laporan. OB yang sudah tersimpan <b>tidak dihapus</b>: bila sudah berhenti, klik <b>Berhenti</b> (mengisi tanggal Selesai) agar laporan periode lama tetap memuatnya. Mengganti nama berarti orang yang sama; untuk orang baru, tambahkan baris baru.</p>
+    <div class="settings-list">
+      ${draft.ob.map((o, i) => {
+        const berhenti = o.selesai && o.selesai < hariIni;
+        const belumMulai = o.mulai && o.mulai > hariIni;
+        const status = berhenti ? "Sudah berhenti" : belumMulai ? "Belum mulai" : "";
+        return `
+        <div class="settings-row settings-row-ob">
+          <input type="text" class="ob-nama" data-field="nama" data-i="${i}" value="${escapeHtml(o.nama)}" maxlength="100" placeholder="Nama OB" aria-label="Nama OB" />
+          <button type="button" class="pill ${o.jabatan === "BACKUP" ? "pill-backup" : ""}" data-action="jabatan" data-i="${i}" title="Klik untuk mengganti jabatan">${o.jabatan === "BACKUP" ? "Backup" : "Anggota"}</button>
+          <label class="ob-tgl"><span>Mulai</span><input type="date" data-field="mulai" data-i="${i}" value="${escapeHtml(o.mulai || "")}" /></label>
+          <label class="ob-tgl"><span>Selesai</span><input type="date" data-field="selesai" data-i="${i}" value="${escapeHtml(o.selesai || "")}" /></label>
+          <div class="ob-aksi">
+            ${tombolBaris(i, draft.ob.length, !o.id)}
+            ${o.id ? (o.selesai
+              ? `<button type="button" class="btn-secondary btn-compact" data-action="aktifkan" data-i="${i}">Aktifkan lagi</button>`
+              : `<button type="button" class="btn-secondary btn-compact" data-action="berhenti" data-i="${i}">Berhenti</button>`) : ""}
+          </div>
+          ${status ? `<span class="ob-status">${status}</span>` : ""}
+        </div>`;
+      }).join("")}
+    </div>
+    <button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah OB</button>`;
+}
+
+function renderLibur(body) {
+  if (!draft.libur) {
+    body.innerHTML = PESAN_BACKEND_LAMA;
+    return;
+  }
+  const tahun = [...new Set(draft.libur.map((h) => h.tanggal.slice(0, 4)).filter(Boolean))].sort();
+  const chip = (nilai, label) =>
+    `<button type="button" class="pill ${liburTahun === nilai ? "pill-aktif" : ""}" data-action="tahun" data-tahun="${nilai}">${label}</button>`;
+  const baris = draft.libur
+    .map((h, i) => ({ h, i }))
+    .filter(({ h }) => liburTahun === "semua" || !h.tanggal || h.tanggal.startsWith(liburTahun));
+  body.innerHTML = `
+    <p class="text-sm muted-copy mb-3">Hanya <b>Sabtu, Minggu, dan baris dengan centang "Otomatis libur"</b> yang dianggap libur di kalender OB. Libur nasional sudah dicentang; <b>cuti bersama tidak</b> (kebijakan tiap perusahaan), jadi hanya tampil sebagai pengingat dan hari itu tetap masuk kecuali dicatat. Centang bila perusahaan meliburkannya. Tambahkan hari libur tahun berikutnya di sini.</p>
+    <div class="pill-group mb-3" role="group" aria-label="Filter tahun">
+      ${tahun.map((t) => chip(t, t)).join("")}${chip("semua", "Semua")}
+    </div>
+    <div class="settings-list">
+      ${baris.length ? baris.map(({ h, i }) => `
+        <div class="settings-row settings-row-libur">
+          <input type="date" data-field="tanggal" data-i="${i}" value="${escapeHtml(h.tanggal)}" aria-label="Tanggal" />
+          <input type="text" class="libur-ket" data-field="keterangan" data-i="${i}" value="${escapeHtml(h.keterangan)}" maxlength="100" placeholder="Keterangan" aria-label="Keterangan" />
+          <button type="button" class="pill pill-${h.jenis === "Nasional" ? "nasional" : h.jenis === "Cuti Bersama" ? "cuti" : "lain"}" data-action="jenis" data-i="${i}" title="Klik untuk mengganti jenis">${escapeHtml(h.jenis)}</button>
+          <label class="settings-check-lg libur-centang"><input type="checkbox" data-field="libur" data-i="${i}" ${h.libur ? "checked" : ""} /><span class="text-sm">Otomatis libur</span></label>
+          <button type="button" class="row-btn row-btn-del" data-action="hapus" data-i="${i}" aria-label="Hapus">✕</button>
+        </div>`).join("") : '<p class="text-sm muted-copy">Belum ada hari libur untuk tahun ini.</p>'}
+    </div>
+    <button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah hari libur</button>`;
 }
 
 function renderTab() {
@@ -102,6 +180,9 @@ function renderTab() {
     infoKolom(kolom);
   }
 
+  if (tabAktif === "ob") renderOB(body);
+  if (tabAktif === "libur") renderLibur(body);
+
   if (tabAktif === "umum") {
     const c = draft.config;
     const f = (key, label) => `
@@ -126,11 +207,15 @@ function renderTab() {
       </div>
 
       <div class="section-title mt-6 mb-1">Laporan Absensi</div>
-      <p class="text-sm muted-copy mb-3">Teks yang tercetak di PDF laporan absensi. Nama PAM di atas juga dipakai pada baris PAM. Nama dan tanda tangan penanda tangan ada pada gambar assets/ttd-blok.png.</p>
+      <p class="text-sm muted-copy mb-3">Teks yang tercetak di PDF laporan absensi (security dan OB). Nama PAM di atas juga dipakai pada baris PAM. Nama dan tanda tangan penanda tangan ada pada gambar assets/ttd-blok.png.</p>
       ${f("absensi_kota", "Kota (tanggal tanda tangan)")}
       ${f("absensi_jam_kerja", "Teks jam kerja (legenda)")}
       ${f("absensi_legenda", "Legenda keterangan (H, L, I, S, TK, CT)")}
-      ${area("absensi_catatan", "Catatan (kotak NOTE)")}`;
+      ${area("absensi_catatan", "Catatan laporan security (kotak NOTE)")}
+
+      <div class="section-title mt-6 mb-1">Laporan OB</div>
+      ${f("ob_jam_masuk", "Jam masuk OB (HH.MM-HH.MM)")}
+      ${area("ob_catatan", "Catatan laporan OB (kotak NOTE)")}`;
   }
 }
 
@@ -142,6 +227,18 @@ function infoKolom(kolom) {
     (total > 10 ? " Peringatan: lebih dari 10 kolom akan sangat sempit di PDF A4." : "");
 }
 
+// Daftar yang sedang diedit pada tab aktif.
+function daftarAktif() {
+  return draft[tabAktif];
+}
+
+const BARIS_BARU = {
+  petugas: () => ({ nama: "", aktif: true }),
+  shift: () => ({ kode: "", jam: "", keterangan: "" }),
+  ob: () => ({ id: "", nama: "", jabatan: "ANGGOTA", mulai: "", selesai: "" }),
+  libur: () => ({ tanggal: "", keterangan: "", jenis: "Lainnya", libur: true })
+};
+
 // Satu pendengar untuk semua kontrol di dalam layar pengaturan.
 document.getElementById("settingsBody").addEventListener("input", (e) => {
   const t = e.target;
@@ -149,7 +246,7 @@ document.getElementById("settingsBody").addEventListener("input", (e) => {
   if (t.dataset.cfg) draft.config[t.dataset.cfg] = t.value;
   if (t.dataset.cfgBool) draft.config[t.dataset.cfgBool] = t.checked;
   if (t.dataset.field) {
-    const item = (tabAktif === "petugas" ? draft.petugas : draft.shift)[Number(t.dataset.i)];
+    const item = daftarAktif()[Number(t.dataset.i)];
     item[t.dataset.field] = t.type === "checkbox" ? t.checked : t.value;
     if (tabAktif === "shift") infoKolom(columns.deriveJamColumns(draft.shift));
   }
@@ -158,24 +255,37 @@ document.getElementById("settingsBody").addEventListener("input", (e) => {
 document.getElementById("settingsBody").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-action]");
   if (!btn || !draft) return;
-  const list = tabAktif === "petugas" ? draft.petugas : draft.shift;
+  const aksi = btn.dataset.action;
+  const list = daftarAktif();
   const i = Number(btn.dataset.i);
 
-  if (btn.dataset.action === "tambah") {
-    list.push(tabAktif === "petugas" ? { nama: "", aktif: true } : { kode: "", jam: "", keterangan: "" });
-  } else if (btn.dataset.action === "hapus") {
+  if (aksi === "tambah") {
+    list.push(BARIS_BARU[tabAktif]());
+    if (tabAktif === "libur") liburTahun = "semua"; // baris baru tanpa tanggal tetap terlihat
+  } else if (aksi === "hapus") {
     list.splice(i, 1);
-  } else if (btn.dataset.action === "up" && i > 0) {
+  } else if (aksi === "up" && i > 0) {
     [list[i - 1], list[i]] = [list[i], list[i - 1]];
-  } else if (btn.dataset.action === "down" && i < list.length - 1) {
+  } else if (aksi === "down" && i < list.length - 1) {
     [list[i + 1], list[i]] = [list[i], list[i + 1]];
+  } else if (aksi === "jabatan") {
+    list[i].jabatan = list[i].jabatan === "BACKUP" ? "ANGGOTA" : "BACKUP";
+  } else if (aksi === "berhenti") {
+    list[i].selesai = hariIniIso(); // hari terakhir bertugas = hari ini
+  } else if (aksi === "aktifkan") {
+    list[i].selesai = "";
+  } else if (aksi === "jenis") {
+    const sekarang = JENIS_LIBUR_URUT.indexOf(list[i].jenis);
+    list[i].jenis = JENIS_LIBUR_URUT[(sekarang + 1) % JENIS_LIBUR_URUT.length];
+  } else if (aksi === "tahun") {
+    liburTahun = btn.dataset.tahun;
   }
   renderTab();
   // Baris baru: langsung fokus ke kolom pertamanya.
-  if (btn.dataset.action === "tambah") {
+  if (aksi === "tambah") {
     const rows = document.querySelectorAll("#settingsBody .settings-row");
     const last = rows[rows.length - 1];
-    if (last) last.querySelector("input[type=text]").focus();
+    if (last) last.querySelector("input").focus();
   }
 });
 

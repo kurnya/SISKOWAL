@@ -48,6 +48,20 @@
       getJadwal(bulan) {
         return request((url) => fetchImpl(`${url}?action=jadwal&bulan=${encodeURIComponent(bulan)}`));
       },
+      getObCatatan(dari, sampai) {
+        return request((url) =>
+          fetchImpl(`${url}?action=ob_catatan&dari=${encodeURIComponent(dari)}&sampai=${encodeURIComponent(sampai)}`)
+        );
+      },
+      simpanObCatatan(bulan, catatan) {
+        return request((url) =>
+          fetchImpl(url, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "simpan_ob_catatan", bulan, catatan })
+          })
+        );
+      },
       simpanMaster(master) {
         return request((url) =>
           fetchImpl(url, {

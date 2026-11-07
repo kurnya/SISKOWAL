@@ -90,6 +90,7 @@ async function muatMaster() {
     btn.disabled = false;
     setStatus("Master data dimuat.", "ok");
     muatDaftarBulan();
+    if (typeof obSetelahMasterDimuat === "function") obSetelahMasterDimuat();
   } catch (err) {
     setStatus("Gagal memuat master data: " + err.message, "error");
   }

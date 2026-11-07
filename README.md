@@ -37,6 +37,28 @@ Tanda tangan: seluruh blok (Dibuat, Diketahui, Korlap beserta garis, nama, tanda
 
 Kedua bulan harus sudah **tersimpan** di spreadsheet. Isian di tabel input yang belum disimpan tidak ikut.
 
+## OB (kalender catatan)
+
+Tab **OB** berisi kalender bulanan. Aturan dasarnya:
+
+- **Hari kerja:** kosong berarti OB **masuk (P)**.
+- **Sabtu, Minggu, dan libur nasional:** kosong berarti **libur (O)**.
+- **Cuti bersama dan libur lain tidak otomatis libur** (kebijakan tiap perusahaan). Cuti bersama hanya muncul sebagai label kuning pengingat; hari itu tetap masuk kecuali Anda mencatatnya.
+
+Klik sebuah tanggal untuk menambah catatan, lalu tekan **Simpan catatan bulan ini**:
+
+- **Hari kerja:** pilih OB dan keterangan (**Sakit S, Izin I, Tanpa keterangan TK, Cuti CT, Libur O**). Untuk Sakit/Izin/TK/Cuti, boleh memilih **Backup** (pengganti). Pilihan "Semua anggota" memudahkan cuti bersama yang diliburkan perusahaan.
+- **Hari libur:** catatannya adalah **siapa yang lembur** (OB itu dihitung masuk).
+
+Laporan OB dibuat di tab **Laporan Absensi** dengan memilih **OB** (periode 16 bulan lalu sampai 15 bulan ini, bisa mengecualikan anggota). Format dan tanda tangan sama dengan laporan security; baris PAM tidak ada.
+
+**Mengelola OB dan hari libur** ada di **Pengaturan → OB** dan **Hari Libur**:
+
+- OB yang sudah tersimpan **tidak bisa dihapus**; klik **Berhenti** (mengisi tanggal Selesai) agar laporan periode lama tetap memuatnya. Mengganti nama berarti orang yang sama; untuk orang baru, tambahkan baris baru.
+- Daftar hari libur **2026** sudah terisi dari SKB 3 Menteri (Setneg). Tahun berikutnya ditambahkan sendiri lewat tab Hari Libur. Centang "Otomatis libur" bila perusahaan meliburkan suatu cuti bersama.
+
+Sheet baru di spreadsheet: `Master_OB`, `Master_Libur`, dan `OB_Catatan`. Setelah memperbarui `Code.gs` dan `Logic.gs`, jalankan **`setup`** sekali lagi (aman: sheet yang sudah ada isinya tidak ditimpa, hanya sheet baru yang dibuat), lalu deploy versi baru.
+
 ## Tes
 
 ```
