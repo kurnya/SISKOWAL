@@ -1,9 +1,7 @@
 // Dropdown kustom untuk semua <select> di dalam .field-shell. <select> asli tetap ada (tersembunyi) dan
 // tetap jadi sumber nilai, sehingga kode lain yang membaca/mengisi select.value atau mengganti option
-// tidak perlu diubah. Hanya aktif di perangkat dengan mouse; layar sentuh tetap memakai pemilih bawaan.
+// tidak perlu diubah. Aktif di semua perangkat (mouse maupun layar sentuh) agar tampilannya seragam.
 (function () {
-  if (!window.matchMedia || !window.matchMedia("(pointer: fine)").matches) return;
-
   const nilaiAsli = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
   const disabledAsli = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "disabled");
   let terbuka = null; // instance dropdown yang sedang terbuka
@@ -85,7 +83,10 @@
       btn.setAttribute("aria-expanded", "true");
       terbuka = inst;
       posisi();
-      tandaiAktif(true);
+      tandaiAktif(false);
+      // Saat dibuka, taruh pilihan aktif di tengah daftar supaya tidak ada baris yang terpotong di tepi.
+      const li = list.children[aktif];
+      if (li) list.scrollTop = Math.max(0, li.offsetTop - (list.clientHeight - li.offsetHeight) / 2);
     }
 
     function tutup(fokus) {

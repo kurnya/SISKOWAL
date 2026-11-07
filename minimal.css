@@ -423,3 +423,9 @@ input[type="number"] { text-align: left; }
 .cselect-list li.aktif { background: var(--accent-soft); }
 .cselect-list li[aria-selected="true"] { font-weight: 700; color: var(--accent-color); }
 .cselect-list li[aria-selected="true"]::after { content: "\2713"; font-weight: 700; }
+
+/* Layar sentuh: baris pilihan lebih tinggi (target ketuk >= 44px) dan daftar tidak lebih tinggi dari setengah layar */
+@media (pointer: coarse) {
+  .cselect-list { max-height: min(18rem, 50vh); }
+  .cselect-list li { min-height: 2.75rem; }
+}
