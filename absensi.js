@@ -4,6 +4,7 @@
   const NAMA_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
   const KODE_LIBUR = "O"; // di laporan, semua kode libur (X, O, kosong) ditulis "O"
   const KODE_PAM = "M"; // baris PAM diisi kode ini setiap hari
+  const KODE_LAPORAN = { PS: "P", SM: "M" };
   const JABATAN = "ANGGOTA";
   const JABATAN_PAM = "TNI PAM";
 
@@ -56,7 +57,7 @@
         if (!r) return "";
         const v = String(r.hari[h.tgl] || "").trim().toUpperCase();
         if (!v || shiftMap[v] === "-") return KODE_LIBUR;
-        return v;
+        return KODE_LAPORAN[v] || v;
       })
     }));
     if (pam && pam.nama) {
@@ -76,12 +77,16 @@
     const dipakai = new Set(baris.flatMap((b) => b.kode).filter(Boolean));
     const kiri = [];
     const kanan = [jamKerjaTeks].filter(Boolean);
+    const shiftLaporan = new Map();
     shiftList.forEach((s) => {
       if (s.jam === "-" || !dipakai.has(s.kode)) return;
+      const kode = KODE_LAPORAN[s.kode] || s.kode;
       const nama = s.keterangan || s.kode;
-      kiri.push(`${s.kode} : Jadwal Masuk ${nama}`);
+      if (!shiftLaporan.has(kode)) shiftLaporan.set(kode, []);
+      if (!shiftLaporan.get(kode).includes(nama)) shiftLaporan.get(kode).push(nama);
       kanan.push(`Masuk ${nama} Pukul ${jamWib(s.jam)}`);
     });
+    shiftLaporan.forEach((nama, kode) => kiri.push(`${kode} : Jadwal Masuk ${nama.join(" / ")}`));
     if (dipakai.has(KODE_LIBUR)) kiri.push(`${KODE_LIBUR} : Off/Libur`);
     return { kiri, kanan };
   }
@@ -90,7 +95,7 @@
   const DEFAULT_CONFIG = {
     absensi_kota: "Jakarta",
     absensi_jam_kerja: "Jam Kerja 8 Jam",
-    absensi_legenda: "H : hadir     L :          I : Izin     S : sakit     TK : Tanpa Keterangan     CT : Cuti",
+    absensi_legenda: "H : hadir     L :          I : Izin     S : sakit     TK : Tanpa Keterangan     CT : Cuti biasa     CB : Cuti bersama (O)",
     absensi_catatan: "",
     ob_jam_masuk: "08.00-17.00",
     ob_catatan: ""

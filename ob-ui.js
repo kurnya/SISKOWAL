@@ -6,7 +6,7 @@ const obState = {
   bulan0: new Date().getMonth(),
   catatan: [], // catatan bulan yang sedang tampil (salinan kerja)
   siap: false, // true setelah catatan bulan ini selesai dimuat; sebelum itu penyimpanan dikunci
-  kotor: false, // ada perubahan yang belum disimpan
+  kotor: false, // ada perubahan yang sedang menunggu autosave atau percobaan ulang
   dimuatSekali: false,
   menunggu: false, // tab dibuka sebelum master data selesai dimuat
   token: 0, // menandai permintaan terbaru agar hasil yang basi diabaikan
@@ -18,14 +18,18 @@ const obEl = {
   tahun: document.getElementById("obTahun"),
   kalender: document.getElementById("obKalender"),
   wrap: document.getElementById("obKalenderWrap"),
-  simpan: document.getElementById("obSimpan"),
-  kotor: document.getElementById("obKotor"),
   status: document.getElementById("obStatus"),
   dialog: document.getElementById("obDialog"),
   nama: document.getElementById("obNama"),
   jenis: document.getElementById("obJenis"),
   backup: document.getElementById("obBackup")
 };
+
+let obAutoSaveTimer = null;
+let obSaveQueue = Promise.resolve();
+let obRevision = 0;
+const obSaveLatest = new Map();
+const obSaveQueued = new Set();
 
 bulanNama.forEach((b, i) => {
   const opt = document.createElement("option");
@@ -34,10 +38,10 @@ bulanNama.forEach((b, i) => {
   obEl.bulan.appendChild(opt);
 });
 
-function obStatusMsg(teks, tipe) {
+function obStatusMsg(teks, tipe, tampilkanToast = true) {
   obEl.status.textContent = teks;
   obEl.status.className = "status-line " + (tipe === "error" ? "status-error" : tipe === "ok" ? "status-ok" : "");
-  if (tipe === "error") tampilToast(teks, tipe);
+  if (tipe === "error" && tampilkanToast) tampilToast(teks, tipe);
 }
 
 const obAdaMaster = () => Boolean(masterData && Array.isArray(masterData.ob) && Array.isArray(masterData.libur));
@@ -56,17 +60,69 @@ function obSetSiap(siap) {
   obState.siap = siap;
   obEl.wrap.classList.toggle("memuat", !siap);
   obEl.wrap.setAttribute("aria-busy", String(!siap));
-  obPerbaruiTombol();
 }
 
-function obPerbaruiTombol() {
-  obEl.simpan.disabled = !(obState.siap && obState.kotor);
-  obEl.kotor.classList.toggle("hidden", !obState.kotor);
+function obSnapshotSimpan() {
+  return {
+    bulan: obKunciBulan(),
+    namaBulan: obNamaBulan(),
+    revisi: ++obRevision,
+    catatan: obState.catatan.map((c) => ({ ...c })),
+    percobaan: 0
+  };
+}
+
+function obAntrikanSimpan(snapshot) {
+  const kunci = `${snapshot.bulan}:${snapshot.revisi}`;
+  if (obSaveQueued.has(kunci)) return;
+  obSaveQueued.add(kunci);
+  obSaveQueue = obSaveQueue.catch(() => {}).then(async () => {
+    const terbaru = obSaveLatest.get(snapshot.bulan);
+    if (!terbaru || terbaru.revisi > snapshot.revisi) {
+      obSaveQueued.delete(kunci);
+      return;
+    }
+    try {
+      await api.simpanObCatatan(snapshot.bulan, snapshot.catatan);
+      if (obSaveLatest.get(snapshot.bulan)?.revisi === snapshot.revisi) obSaveLatest.delete(snapshot.bulan);
+      if (obKunciBulan() === snapshot.bulan && obRevision === snapshot.revisi) {
+        obState.kotor = false;
+        obStatusMsg(`Catatan ${snapshot.namaBulan} tersimpan otomatis.`, "ok");
+      }
+    } catch (err) {
+      const versiTerbaru = obSaveLatest.get(snapshot.bulan);
+      if (versiTerbaru && versiTerbaru.revisi > snapshot.revisi) {
+        obAntrikanSimpan(versiTerbaru);
+        return;
+      }
+      if (versiTerbaru && obKunciBulan() === snapshot.bulan) {
+        obStatusMsg(`Gagal menyimpan otomatis: ${err.message}. Perubahan tetap di layar; mencoba lagi.`, "error", false);
+      }
+      if (versiTerbaru) {
+        versiTerbaru.percobaan += 1;
+        const jeda = Math.min(30000, 1000 * 2 ** Math.min(versiTerbaru.percobaan, 5));
+        setTimeout(() => obAntrikanSimpan(versiTerbaru), jeda);
+      }
+    } finally {
+      obSaveQueued.delete(kunci);
+    }
+  });
 }
 
 function obTandaiKotor() {
+  if (!obState.siap) return;
   obState.kotor = true;
-  obPerbaruiTombol();
+  const snapshot = obSnapshotSimpan();
+  obSaveLatest.set(snapshot.bulan, snapshot);
+  clearTimeout(obAutoSaveTimer);
+  obStatusMsg(`Menyimpan perubahan ${snapshot.namaBulan} otomatis...`);
+  obAutoSaveTimer = setTimeout(() => obAntrikanSimpan(snapshot), 300);
+}
+
+function obFlushAutosave() {
+  clearTimeout(obAutoSaveTimer);
+  const snapshot = obSaveLatest.get(obKunciBulan());
+  if (snapshot) obAntrikanSimpan(snapshot);
 }
 
 // ---------------------------------------------------------------- memuat & berpindah bulan
@@ -79,13 +135,23 @@ async function obMuat() {
   obRender(); // hari libur sudah bisa terlihat selagi catatan dimuat
   obStatusMsg(`Memuat catatan ${obNamaBulan()}...`);
   try {
+    const tahunLibur = String(obState.tahun);
+    const dataLibur = await api.getLiburTahun(tahunLibur);
+    if (token !== obState.token) return;
+    masterData.libur = masterData.libur.filter((h) => !h.tanggal.startsWith(tahunLibur + "-")).concat(dataLibur.libur);
+    obRender();
     const jumlahHari = new Date(obState.tahun, obState.bulan0 + 1, 0).getDate();
     const data = await api.getObCatatan(kalenderOb.iso(obState.tahun, obState.bulan0, 1), kalenderOb.iso(obState.tahun, obState.bulan0, jumlahHari));
     if (token !== obState.token) return;
-    obState.catatan = data.catatan;
+    const pending = obSaveLatest.get(obKunciBulan());
+    obState.catatan = pending ? pending.catatan.map((c) => ({ ...c })) : data.catatan;
+    obState.kotor = Boolean(pending);
+    if (pending) obAntrikanSimpan(pending);
     obSetSiap(true);
     obRender();
-    obStatusMsg(data.catatan.length ? `Catatan ${obNamaBulan()} dimuat.` : `Belum ada catatan untuk ${obNamaBulan()}. Klik sebuah tanggal untuk menambah.`, "ok");
+    obStatusMsg(pending
+      ? `Melanjutkan penyimpanan otomatis ${obNamaBulan()}...`
+      : data.catatan.length ? `Catatan ${obNamaBulan()} dimuat.` : `Belum ada catatan untuk ${obNamaBulan()}. Klik sebuah tanggal untuk menambah.`, "ok");
   } catch (err) {
     if (token === obState.token) {
       // Penyimpanan tetap nonaktif supaya catatan lama yang gagal dimuat tidak tertimpa.
@@ -95,10 +161,7 @@ async function obMuat() {
 }
 
 function obGanti(tahun, bulan0) {
-  if (obState.kotor && !confirm(`Catatan ${obNamaBulan()} belum disimpan. Pindah bulan dan buang perubahan itu?`)) {
-    obRender(); // kembalikan pilihan bulan/tahun ke bulan yang tampil
-    return;
-  }
+  obFlushAutosave();
   const d = new Date(tahun, bulan0, 1); // menangani limpahan (mis. bulan 12 -> Januari tahun berikutnya)
   obState.tahun = d.getFullYear();
   obState.bulan0 = d.getMonth();
@@ -217,6 +280,12 @@ function obTutupDialog() {
   obState.hari = null;
 }
 
+function obSelesaiDialog() {
+  // Bila form masih terisi, terapkan langsung sebelum dialog ditutup.
+  if (obEl.nama.value && !obTambahCatatan()) return;
+  obTutupDialog();
+}
+
 function obIsiDialog() {
   const iso = obState.hari;
   const st = kalenderOb.statusHari(iso, masterData.libur);
@@ -250,8 +319,13 @@ function obIsiDialog() {
   document.getElementById("obNamaLabel").textContent = st.libur ? "Siapa yang lembur?" : "Nama OB";
   document.getElementById("obJenisWrap").classList.toggle("hidden", st.libur);
   if (!st.libur) {
-    obIsiSelect(obEl.jenis, kalenderOb.JENIS_HARI_KERJA.map((j) => ({ v: j, t: kalenderOb.NAMA_JENIS[j] })), "S");
+    const cutiBersama = st.jenisInfo === "Cuti Bersama";
+    obIsiSelect(obEl.jenis, kalenderOb.JENIS_HARI_KERJA.map((j) => ({ v: j, t: kalenderOb.NAMA_JENIS[j] })), cutiBersama ? "CB" : "S");
   }
+  // Tombol pintas hanya di tanggal cuti bersama (hari kerja yang tercatat sebagai cuti bersama di Hari Libur).
+  const tawarkan = !st.libur && st.jenisInfo === "Cuti Bersama";
+  document.getElementById("obCutiBersamaWrap").classList.toggle("hidden", !tawarkan);
+  if (tawarkan) document.getElementById("obCutiBersamaKet").textContent = st.info;
   obIsiBackup();
   document.getElementById("obFormPesan").textContent = "";
 }
@@ -278,18 +352,39 @@ function obTambahCatatan() {
   const pilihNama = obEl.nama.value;
   if (!pilihNama) {
     pesan.textContent = "Pilih nama OB dulu.";
-    return;
+    return false;
   }
   const jenis = st.libur ? "LEMBUR" : obEl.jenis.value;
   const sudah = new Set(obCatatanTanggal(iso).map((c) => c.idOb));
   const ids = pilihNama === "*" ? obHariAktif(iso).filter((o) => o.jabatan !== "BACKUP" && !sudah.has(o.id)).map((o) => o.id) : [pilihNama];
+  if (!ids.length) {
+    pesan.textContent = "Semua anggota sudah punya catatan pada tanggal ini.";
+    return false;
+  }
   const backup = pilihNama !== "*" && kalenderOb.JENIS_ABSEN.includes(jenis) ? obEl.backup.value : "";
 
   ids.forEach((id) => obState.catatan.push({ tanggal: iso, idOb: id, jenis, idBackup: backup }));
   obTandaiKotor();
   obRender();
   obIsiDialog();
-  obStatusMsg("Catatan ditambahkan. Jangan lupa menekan Simpan catatan bulan ini.");
+  obStatusMsg("Catatan ditambahkan dan sedang disimpan otomatis.");
+  return true;
+}
+
+// Menerapkan cuti bersama (dihitung O) ke semua anggota yang bertugas dan belum punya catatan pada tanggal ini.
+function obCutiBersamaSemua() {
+  const iso = obState.hari;
+  const sudah = new Set(obCatatanTanggal(iso).map((c) => c.idOb));
+  const ids = obHariAktif(iso).filter((o) => o.jabatan !== "BACKUP" && !sudah.has(o.id)).map((o) => o.id);
+  if (!ids.length) {
+    document.getElementById("obFormPesan").textContent = "Semua anggota sudah punya catatan pada tanggal ini.";
+    return;
+  }
+  ids.forEach((id) => obState.catatan.push({ tanggal: iso, idOb: id, jenis: "CB", idBackup: "" }));
+  obTandaiKotor();
+  obRender();
+  obIsiDialog();
+  obStatusMsg(`Cuti bersama diterapkan ke ${ids.length} anggota dan sedang disimpan otomatis.`);
 }
 
 function obHapusCatatan(idOb) {
@@ -299,34 +394,10 @@ function obHapusCatatan(idOb) {
   obTandaiKotor();
   obRender();
   obIsiDialog();
+  obStatusMsg("Catatan dihapus dan perubahan sedang disimpan otomatis.");
 }
 
 // ---------------------------------------------------------------- menyimpan
-async function obSimpan() {
-  if (!obState.siap) {
-    obStatusMsg("Catatan bulan ini belum selesai dimuat, jadi belum bisa disimpan.", "error");
-    return;
-  }
-  const bulan = obKunciBulan();
-  const btn = obEl.simpan;
-  const original = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Menyimpan...';
-  obStatusMsg(`Menyimpan catatan ${obNamaBulan()}...`);
-  try {
-    await api.simpanObCatatan(bulan, obState.catatan);
-    obState.kotor = false;
-    obStatusMsg(`Catatan ${obNamaBulan()} tersimpan di spreadsheet.`, "ok");
-    tampilToast(`Catatan ${obNamaBulan()} tersimpan.`, "ok");
-  } catch (err) {
-    obStatusMsg("Gagal menyimpan (catatan di layar tetap aman): " + err.message, "error");
-  } finally {
-    btn.innerHTML = original;
-    obPerbaruiTombol();
-    lucide.createIcons();
-  }
-}
-
 // ---------------------------------------------------------------- pendengar
 obEl.kalender.addEventListener("click", (e) => {
   const sel = e.target.closest(".cal-day");
@@ -340,8 +411,7 @@ obEl.dialog.addEventListener("change", (e) => {
   if (e.target === obEl.nama || e.target === obEl.jenis) obIsiBackup();
 });
 document.getElementById("obTambah").addEventListener("click", obTambahCatatan);
-obEl.simpan.addEventListener("click", obSimpan);
-
+document.getElementById("obSelesai").addEventListener("click", obSelesaiDialog);
 obEl.bulan.addEventListener("change", () => obGanti(obState.tahun, parseInt(obEl.bulan.value)));
 obEl.tahun.addEventListener("change", () => {
   const t = parseInt(obEl.tahun.value);
@@ -359,9 +429,9 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && obState.hari) obTutupDialog();
 });
 
-// Peringatan bila menutup halaman saat ada catatan yang belum disimpan.
+// Peringatan jika halaman ditutup sebelum autosave selesai.
 window.addEventListener("beforeunload", (e) => {
-  if (obState.kotor) {
+  if (obState.kotor || obSaveLatest.size) {
     e.preventDefault();
     e.returnValue = "";
   }

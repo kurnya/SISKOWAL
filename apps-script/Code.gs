@@ -51,6 +51,97 @@ function getMaster_() {
   };
 }
 
+// Memperbarui data hari libur paling sering sekali sehari. Cuti bersama diimpor sebagai
+// otomatis libur; entri khusus perusahaan (Lainnya) tetap dipertahankan.
+function sinkronkanHariLiburTahun_(tahun) {
+  tahun = Number(tahun);
+  if (!Number.isInteger(tahun) || tahun < 2000 || tahun > 2100 || typeof UrlFetchApp === 'undefined') return false;
+
+  var props = PropertiesService.getScriptProperties();
+  var key = 'hari_libur_sync_' + tahun;
+  if (Date.now() - Number(props.getProperty(key) || 0) < 24 * 60 * 60 * 1000) return false;
+
+  var daftar = [];
+  try {
+    var response = UrlFetchApp.fetch('https://indonesian-holidays.ahrulsyamil.com/holidays/' + tahun, { muteHttpExceptions: true });
+    if (response.getResponseCode() === 200) {
+      var payload = JSON.parse(response.getContentText());
+      var perTanggal = {};
+      (payload.data || []).forEach(function (h) {
+        if (!h || !isValidTanggal(h.date) || h.date.slice(0, 4) !== String(tahun)) return;
+        var jenis = h.type === 'national_holiday' ? 'Nasional' : h.type === 'joint_leave' ? 'Cuti Bersama' : '';
+        if (!jenis) return;
+        var nama = String(h.name || jenis);
+        var sudah = perTanggal[h.date];
+        if (!sudah) perTanggal[h.date] = { tanggal: h.date, keterangan: nama, jenis: jenis, libur: true };
+        else {
+          if (sudah.keterangan.indexOf(nama) < 0) sudah.keterangan += ' / ' + nama;
+          if (jenis === 'Nasional') sudah.jenis = 'Nasional';
+        }
+      });
+      daftar = Object.keys(perTanggal).sort().map(function (tanggal) { return perTanggal[tanggal]; });
+    }
+  } catch (err) {
+    console.warn('Sinkronisasi hari libur ' + tahun + ' gagal: ' + err.message);
+  }
+
+  // API belum memuat 2027; gunakan data SKB yang diumumkan Kemenko PMK.
+  if (!daftar.length && tahun === 2027) daftar = liburSeed2027_();
+  if (!daftar.length) {
+    props.setProperty(key, String(Date.now()));
+    return false;
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var ss = SpreadsheetApp.getActive();
+    var sheet = ss.getSheetByName(SHEET_LIBUR) || ss.insertSheet(SHEET_LIBUR);
+    var lama = parseLibur(sheet.getDataRange().getValues());
+    var sisanya = lama.filter(function (h) {
+      return h.tanggal.slice(0, 4) !== String(tahun) || (h.jenis !== 'Nasional' && h.jenis !== 'Cuti Bersama');
+    });
+    var hasil = sisanya.concat(daftar).sort(function (a, b) { return a.tanggal < b.tanggal ? -1 : a.tanggal > b.tanggal ? 1 : 0; });
+    tulisSheet_(ss, SHEET_LIBUR, liburToSheetValues(hasil), [1]);
+    props.setProperty(key, String(Date.now()));
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function liburSeed2027_() {
+  var N = 'Nasional', C = 'Cuti Bersama';
+  return [
+    ['2027-01-01', 'Tahun Baru 2027 Masehi', N],
+    ['2027-01-05', 'Isra Mikraj Nabi Muhammad SAW 1448 Hijriah', N],
+    ['2027-02-05', 'Cuti Bersama Tahun Baru Imlek 2578 Kongzili', C],
+    ['2027-02-06', 'Tahun Baru Imlek 2578 Kongzili', N],
+    ['2027-03-08', 'Hari Suci Nyepi (Tahun Baru Saka 1949)', N],
+    ['2027-03-09', 'Cuti Bersama Idul Fitri 1448 Hijriah', C],
+    ['2027-03-10', 'Idul Fitri 1448 Hijriah', N],
+    ['2027-03-11', 'Idul Fitri 1448 Hijriah', N],
+    ['2027-03-12', 'Cuti Bersama Idul Fitri 1448 Hijriah', C],
+    ['2027-03-15', 'Cuti Bersama Idul Fitri 1448 Hijriah', C],
+    ['2027-03-25', 'Cuti Bersama Wafat Yesus Kristus', C],
+    ['2027-03-26', 'Wafat Yesus Kristus', N],
+    ['2027-03-28', 'Kebangkitan Yesus Kristus (Paskah)', N],
+    ['2027-05-01', 'Hari Buruh Internasional', N],
+    ['2027-05-06', 'Kenaikan Yesus Kristus', N],
+    ['2027-05-17', 'Idul Adha 1448 Hijriah', N],
+    ['2027-05-18', 'Cuti Bersama Idul Adha 1448 Hijriah', C],
+    ['2027-05-19', 'Cuti Bersama Hari Raya Waisak 2571 BE', C],
+    ['2027-05-20', 'Hari Raya Waisak 2571 BE', N],
+    ['2027-06-01', 'Hari Lahir Pancasila', N],
+    ['2027-06-06', '1 Muharam Tahun Baru Islam 1449 Hijriah', N],
+    ['2027-08-15', 'Maulid Nabi Muhammad SAW 1449 Hijriah', N],
+    ['2027-08-17', 'Proklamasi Kemerdekaan', N],
+    ['2027-12-24', 'Cuti Bersama Kelahiran Yesus Kristus', C],
+    ['2027-12-25', 'Kelahiran Yesus Kristus (Natal)', N],
+    ['2027-12-26', 'Isra Mikraj Nabi Muhammad SAW 1449 Hijriah', N]
+  ].map(function (r) { return { tanggal: r[0], keterangan: r[1], jenis: r[2], libur: true }; });
+}
+
 function simpanMaster_(master) {
   // OB yang sudah punya ID tidak boleh hilang dari daftar (riwayat laporan bergantung padanya).
   var ctx = {
@@ -142,7 +233,19 @@ function simpanObCatatan_(bulan, catatan) {
 function doGet(e) {
   try {
     var action = e && e.parameter && e.parameter.action;
-    if (action === 'master') return jsonOut_({ ok: true, data: getMaster_() });
+    if (action === 'master') {
+      var tahun = e && e.parameter && e.parameter.tahun
+        ? e.parameter.tahun
+        : (typeof Utilities !== 'undefined' ? Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy') : String(new Date().getFullYear()));
+      sinkronkanHariLiburTahun_(tahun);
+      return jsonOut_({ ok: true, data: getMaster_() });
+    }
+    if (action === 'libur_tahun') {
+      var tahunLibur = String(e.parameter.tahun || '');
+      sinkronkanHariLiburTahun_(tahunLibur);
+      var semuaLibur = parseLibur(readSheetOpsional_(SHEET_LIBUR));
+      return jsonOut_({ ok: true, data: { tahun: tahunLibur, libur: semuaLibur.filter(function (h) { return h.tanggal.slice(0, 4) === tahunLibur; }) } });
+    }
     if (action === 'bulan') return jsonOut_({ ok: true, data: getDaftarBulan_() });
     if (action === 'jadwal') return jsonOut_({ ok: true, data: getJadwal_(e.parameter.bulan) });
     if (action === 'ob_catatan') return jsonOut_({ ok: true, data: getObCatatan_(e.parameter.dari, e.parameter.sampai) });
@@ -171,9 +274,9 @@ function doPost(e) {
 }
 
 // Hari libur nasional dan cuti bersama 2026 (SKB 3 Menteri 19 September 2025: Menag 1497/2025,
-// Menaker 2/2025, MenPANRB 5/2025; sumber: setneg.go.id). Hanya libur nasional dan Sabtu/Minggu yang
-// otomatis libur di kalender OB. Cuti bersama ditandai Libur = FALSE: tampil sebagai info, hari itu
-// tetap masuk kecuali dicatat, karena kebijakannya berbeda tiap perusahaan.
+// Menaker 2/2025, MenPANRB 5/2025; sumber: setneg.go.id). Hari nasional dan cuti bersama otomatis
+// diperlakukan sebagai libur di kalender OB; nilai Libur lama untuk cuti bersama tetap dibaca agar
+// spreadsheet yang sudah ada tetap kompatibel.
 function liburSeed2026_() {
   var N = 'Nasional', C = 'Cuti Bersama';
   return [
@@ -254,7 +357,7 @@ function setup() {
     ['pam_aktif', 'TRUE'],
     ['absensi_kota', 'Jakarta'],
     ['absensi_jam_kerja', 'Jam Kerja 8 Jam'],
-    ['absensi_legenda', 'H : hadir     L :          I : Izin     S : sakit     TK : Tanpa Keterangan     CT : Cuti'],
+    ['absensi_legenda', 'H : hadir     L :          I : Izin     S : sakit     TK : Tanpa Keterangan     CT : Cuti biasa     CB : Cuti bersama (O)'],
     ['absensi_catatan', ''],
     ['ob_jam_masuk', '08.00-17.00'],
     ['ob_catatan', '']

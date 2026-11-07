@@ -2,16 +2,17 @@
 //
 // Aturan dasar:
 //  - Hari kerja: kosong = masuk (P).
-//  - Sabtu, Minggu, dan libur nasional (baris Master_Libur dengan libur = ya): kosong = libur (O).
-//  - Cuti bersama dan libur lain TIDAK otomatis libur (kebijakan tiap perusahaan): tampil sebagai info,
-//    hari itu tetap masuk kecuali dicatat (Cuti atau Libur) pada OB yang bersangkutan.
-//  - Catatan hari kerja: Sakit S, Izin I, Tanpa keterangan TK, Cuti CT, Libur O, dengan backup (pengganti) opsional.
+//  - Sabtu, Minggu, libur nasional, dan cuti bersama: kosong = libur (O).
+//  - Libur lain mengikuti centang otomatis-libur; hari kerja lainnya kosong = masuk (P).
+//  - Catatan hari kerja: Sakit S, Izin I, Tanpa keterangan TK, Cuti biasa CT, Cuti bersama (tampil O), Libur lain O,
+//    dengan backup (pengganti) opsional untuk S/I/TK/CT.
 //  - Catatan hari libur: Lembur = OB itu masuk (P).
 (function (root) {
   const NAMA_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
   const NAMA_HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-  const NAMA_JENIS = { S: "Sakit", I: "Izin", TK: "Tanpa keterangan", CT: "Cuti", O: "Libur", LEMBUR: "Lembur" };
-  const JENIS_HARI_KERJA = ["S", "I", "TK", "CT", "O"]; // pilihan catatan pada hari kerja
+  const NAMA_JENIS = { S: "Sakit", I: "Izin", TK: "Tanpa keterangan", CT: "Cuti biasa", CB: "Cuti bersama", O: "Libur lain", LEMBUR: "Lembur" };
+  // Pilihan catatan pada hari kerja. CB (cuti bersama) dan O (libur lain) sama-sama tampil "O" di laporan; CT (cuti biasa) tampil "CT".
+  const JENIS_HARI_KERJA = ["S", "I", "TK", "CT", "CB", "O"];
   const JENIS_ABSEN = ["S", "I", "TK", "CT"]; // yang boleh punya backup
   const KODE_MASUK = "P";
   const KODE_LIBUR = "O";
@@ -30,7 +31,9 @@
   // (mis. cuti bersama), supaya kalender bisa mengingatkan bahwa perlu dicatat bila perusahaan meliburkan.
   function statusHari(isoStr, libur) {
     const baris = (libur || []).find((h) => h.tanggal === isoStr);
-    if (baris && baris.libur) return { libur: true, alasan: baris.keterangan || "Libur", info: "", jenisInfo: "" };
+    if (baris && (baris.libur || baris.jenis === "Cuti Bersama")) {
+      return { libur: true, alasan: baris.keterangan || baris.jenis, info: "", jenisInfo: "" };
+    }
     const dow = hariKe(isoStr);
     if (dow === 0) return { libur: true, alasan: "Minggu", info: "", jenisInfo: "" };
     if (dow === 6) return { libur: true, alasan: "Sabtu", info: "", jenisInfo: "" };
@@ -46,7 +49,11 @@
   function kodeOB(ob, isoStr, status, catatanHari) {
     if (!aktifPada(ob, isoStr)) return KODE_TIDAK_BEKERJA;
     const sendiri = catatanHari.find((c) => c.idOb === ob.id);
-    if (sendiri) return sendiri.jenis === "LEMBUR" ? KODE_MASUK : sendiri.jenis;
+    if (sendiri) {
+      if (sendiri.jenis === "LEMBUR") return KODE_MASUK;
+      if (sendiri.jenis === "CB") return KODE_LIBUR; // cuti bersama dihitung O di laporan
+      return sendiri.jenis;
+    }
     if (catatanHari.some((c) => c.idBackup === ob.id)) return KODE_MASUK; // menggantikan rekan yang absen
     if (ob.jabatan === "BACKUP") return KODE_TIDAK_BEKERJA;
     return status.libur ? KODE_LIBUR : KODE_MASUK;

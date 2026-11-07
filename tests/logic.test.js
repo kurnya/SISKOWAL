@@ -406,3 +406,25 @@ test("legendaOB & labelCatatan & selKalender", () => {
   assert.equal(sel.filter(Boolean).length, 31);
   assert.equal(sel.find((s) => s && s.tgl === 17).iso, "2026-08-17");
 });
+
+test("cuti bersama (CB) dihitung O di laporan, cuti biasa tetap CT", () => {
+  const [firdaus] = OB_CONTOH;
+  const kerja = { libur: false };
+  assert.equal(K.kodeOB(firdaus, "2026-03-20", kerja, [{ idOb: "OB001", jenis: "CB", idBackup: "" }]), "O");
+  assert.equal(K.kodeOB(firdaus, "2026-03-20", kerja, [{ idOb: "OB001", jenis: "CT", idBackup: "" }]), "CT");
+  assert.equal(K.NAMA_JENIS.CB, "Cuti bersama");
+  assert.equal(K.NAMA_JENIS.CT, "Cuti biasa");
+  assert.deepEqual(K.JENIS_HARI_KERJA, ["S", "I", "TK", "CT", "CB", "O"]);
+  assert.equal(K.JENIS_ABSEN.includes("CB"), false); // cuti bersama tidak butuh backup
+
+  // satu periode: 20 Maret dicatat cuti bersama untuk semua anggota -> O; hari kerja lain tetap P
+  const periode = A.periodeAbsensi(2026, 3); // 16 Mar - 15 Apr
+  const catatan = ["OB001", "OB002"].map((idOb) => ({ tanggal: "2026-03-20", idOb, jenis: "CB", idBackup: "" }));
+  const baris = K.barisPeriode({ periode, ob: OB_CONTOH, libur: LIBUR_2026, catatan, terpilihIds: ["OB001", "OB002"] });
+  const i20 = periode.hari.findIndex((h) => h.iso === "2026-03-20");
+  assert.equal(baris[0].kode[i20], "O");
+  assert.equal(baris[1].kode[i20], "O");
+  const i17 = periode.hari.findIndex((h) => h.iso === "2026-03-17"); // Selasa biasa
+  assert.equal(baris[0].kode[i17], "P");
+  assert.equal(baris[0].kode[periode.hari.findIndex((h) => h.iso === "2026-03-21")], "O"); // Idulfitri: libur nasional otomatis
+});

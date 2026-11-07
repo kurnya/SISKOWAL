@@ -312,6 +312,9 @@ th { font-weight: 600; }
 .absensi-panel { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); }
 .absensi-pam { margin-top: 0.75rem; }
 .absensi-actions { margin-top: 1.25rem; }
+.abs-preview { margin-top: 1rem; }
+.abs-preview-pages { display: grid; gap: 1rem; padding: 0.75rem; overflow: auto; border: 1px solid var(--border-color); border-radius: 0.75rem; background: #fff; }
+.abs-preview-page { display: block; width: 100%; height: auto; background: #fff; box-shadow: 0 1px 5px rgb(15 23 42 / 16%); }
 .absensi-tag { color: var(--danger-color); }
 
 /* ---------- Toast & footer ---------- */
@@ -521,7 +524,7 @@ input[type="number"] { text-align: left; }
 [data-theme="dark"] .chip-O { --c: #94a3b8; }
 [data-theme="dark"] .chip-LEMBUR { --c: #4ade80; }
 
-.cal-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-secondary); }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin-top: 0.4rem; font-size: 0.78rem; color: var(--text-secondary); }
 .cal-dot { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.35rem; border-radius: 50%; vertical-align: middle; border: 1px solid var(--border-color); }
 .cal-dot-merah { background: var(--danger-color); border-color: transparent; }
 .cal-dot-sabtu { background: var(--weekend); }
@@ -548,10 +551,33 @@ input[type="number"] { text-align: left; }
 }
 
 /* ---------- Pilihan jenis laporan & pil ---------- */
-.seg { display: inline-flex; overflow: hidden; border: 1px solid var(--border-color); border-radius: 0.7rem; background: var(--bg-secondary); }
-.seg-btn { min-height: 2.5rem; padding: 0.4rem 1.2rem; border-radius: 0; background: transparent; color: var(--text-secondary); font-weight: 600; }
-.seg-btn.active,
-[data-theme="dark"] .seg-btn.active { background: var(--accent-soft); color: var(--accent-color); }
+.report-picker { width: min(100%, 34rem); margin: 0.25rem 0 1rem; }
+.report-picker-label { margin-bottom: 0.4rem; color: var(--text-secondary); font-size: 0.8rem; font-weight: 700; }
+.report-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
+.report-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  text-align: left;
+}
+.report-option.active,
+[data-theme="dark"] .report-option.active { border-color: var(--accent-color); background: var(--accent-soft); color: var(--accent-color); box-shadow: inset 0 0 0 1px var(--accent-color); }
+.report-option-title { display: flex; align-items: center; gap: 0.4rem; font-weight: 700; }
+.report-option-title .icon { flex: none; margin-right: 0; }
+.report-option-desc { color: var(--text-secondary); font-size: 0.75rem; line-height: 1.25; }
+.report-option.active .report-option-desc { color: var(--text-primary); }
+@media (max-width: 420px) {
+  .report-options { grid-template-columns: 1fr; }
+}
 
 .pill {
   padding: 0.3rem 0.85rem;
@@ -574,6 +600,19 @@ input[type="number"] { text-align: left; }
 .pill-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 
 /* ---------- Pengaturan: baris OB & hari libur ---------- */
+.settings-section-card { margin-bottom: 1rem; overflow: hidden; border: 1px solid var(--border-color); border-radius: 0.9rem; background: var(--bg-secondary); }
+.settings-section-head { padding: 1rem 1.1rem 0.8rem; border-bottom: 1px solid var(--border-color); background: var(--bg-soft); }
+.settings-section-title { color: var(--text-primary); font-size: 0.98rem; font-weight: 700; }
+.settings-section-desc { margin-top: 0.2rem; color: var(--text-secondary); font-size: 0.82rem; line-height: 1.45; }
+.settings-section-content { padding: 1rem 1.1rem; }
+.settings-section-content > :last-child { margin-bottom: 0; }
+.settings-fields-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.settings-field { min-width: 0; }
+.settings-field .field-label { display: block; margin-bottom: 0.5rem; }
+.settings-field input,
+.settings-field textarea { display: block; width: 100%; min-height: 3.25rem; margin: 0; padding: 0.7rem 0.85rem; font-size: 1rem; }
+.settings-field textarea { min-height: 6.5rem; resize: vertical; }
+.settings-section-content .settings-list { margin-bottom: 0.9rem; }
 .settings-row-ob,
 .settings-row-libur { flex-wrap: wrap; gap: 0.5rem; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.8rem; }
 .ob-nama { flex: 1 1 11rem; }
@@ -589,3 +628,13 @@ input[type="number"] { text-align: left; }
 .settings-row-ob input[type="date"],
 .settings-row-libur input[type="date"] { width: 10.5rem; flex: none; }
 .ob-tgl { flex: none; }
+
+@media (max-width: 600px) {
+  .settings-section-head { padding: 0.85rem 0.9rem 0.7rem; }
+  .settings-section-content { padding: 0.85rem 0.9rem; }
+  .settings-fields-grid { gap: 0.9rem; }
+}
+
+/* Cuti bersama: senada dengan label kuning pengingat di kalender */
+.chip-CB { --c: #d97706; }
+[data-theme="dark"] .chip-CB { --c: #fbbf24; }

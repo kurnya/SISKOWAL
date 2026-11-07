@@ -8,6 +8,7 @@ const absTahun = document.getElementById("absTahun");
 let absState = null; // { periode, prev, cur, anggota } setelah "Muat Anggota"
 let absToken = 0; // menandai permintaan terbaru agar hasil yang basi diabaikan
 let absJenis = "security"; // "security" | "ob"
+let absPreviewToken = 0;
 
 const SUBJUDUL_ABSENSI = {
   security: "Periode dari tanggal 16 bulan sebelumnya sampai tanggal 15 bulan yang dipilih. Datanya diambil dari jadwal yang sudah tersimpan.",
@@ -44,6 +45,7 @@ function absReset() {
   absToken++;
   absState = null;
   document.getElementById("absPanel").classList.add("hidden");
+  absTutupPreview();
   absTampilkanPeriode();
 }
 
@@ -233,13 +235,69 @@ function absBuatDokumen() {
 }
 
 function previewAbsensi() {
+  const preview = document.getElementById("absPreviewWrap");
+  if (!preview.classList.contains("hidden")) {
+    absTutupPreview();
+    return;
+  }
   const doc = absBuatDokumen();
   if (!doc) return;
-  document.getElementById("pdfPreview").src = doc.output("bloburl");
-  document.getElementById("pdfModalCard").style.width = "min(1200px, 96vw)"; // landscape butuh lebih lebar
-  const modal = document.getElementById("pdfModal");
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
+  const token = ++absPreviewToken;
+  const pages = document.getElementById("absPreviewPages");
+  pages.replaceChildren();
+  preview.classList.remove("hidden");
+  document.getElementById("absPreviewToggle").innerHTML = '<i data-lucide="eye-off" class="icon"></i> Sembunyikan Preview';
+  lucide.createIcons();
+  preview.scrollIntoView({ behavior: "smooth", block: "start" });
+  absRenderPreview(doc, pages, token);
+}
+
+async function absRenderPreview(doc, container, token) {
+  try {
+    if (!window.pdfjsLib) throw new Error("Komponen preview PDF tidak tersedia.");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(doc.output("arraybuffer")) }).promise;
+    for (let nomor = 1; nomor <= pdf.numPages; nomor++) {
+      if (token !== absPreviewToken) return;
+      const page = await pdf.getPage(nomor);
+      const base = page.getViewport({ scale: 1 });
+      const scale = Math.max(0.1, (container.clientWidth - 24) / base.width);
+      const viewport = page.getViewport({ scale });
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      const canvas = document.createElement("canvas");
+      canvas.className = "abs-preview-page";
+      canvas.setAttribute("aria-label", `Halaman ${nomor} dari ${pdf.numPages}`);
+      canvas.width = Math.ceil(viewport.width * ratio);
+      canvas.height = Math.ceil(viewport.height * ratio);
+      const context = canvas.getContext("2d", { alpha: false });
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: context, viewport, transform: ratio === 1 ? null : [ratio, 0, 0, ratio, 0, 0] }).promise;
+      if (token !== absPreviewToken) return;
+      container.appendChild(canvas);
+    }
+  } catch (error) {
+    if (token !== absPreviewToken) return;
+    container.replaceChildren();
+    const message = document.createElement("p");
+    message.className = "muted-copy";
+    message.textContent = "Preview dokumen gagal ditampilkan. Silakan unduh PDF untuk melihat laporan.";
+    container.appendChild(message);
+    console.error("Gagal merender preview absensi:", error);
+  }
+}
+
+function absTutupPreview() {
+  const preview = document.getElementById("absPreviewWrap");
+  if (!preview) return;
+  absPreviewToken++;
+  preview.classList.add("hidden");
+  document.getElementById("absPreviewPages").replaceChildren();
+  const toggle = document.getElementById("absPreviewToggle");
+  if (toggle) {
+    toggle.innerHTML = '<i data-lucide="eye" class="icon"></i> Tampilkan Preview';
+    lucide.createIcons();
+  }
 }
 
 function downloadAbsensi() {
@@ -252,15 +310,19 @@ function downloadAbsensi() {
 }
 
 document.getElementById("absList").addEventListener("change", (e) => {
-  if (e.target.matches("input[type=checkbox]")) e.target.closest(".absensi-item").classList.toggle("dikecualikan", !e.target.checked);
+  if (e.target.matches("input[type=checkbox]")) {
+    e.target.closest(".absensi-item").classList.toggle("dikecualikan", !e.target.checked);
+    absTutupPreview();
+  }
 });
+document.getElementById("absPam").addEventListener("change", absTutupPreview);
 // Pilihan jenis laporan: mengganti jenis membuang daftar anggota yang sudah dimuat.
 function absSetJenis(jenis) {
   absJenis = jenis;
-  document.querySelectorAll(".seg-btn").forEach((b) => {
+  document.querySelectorAll(".report-option").forEach((b) => {
     const aktif = b.dataset.jenis === jenis;
     b.classList.toggle("active", aktif);
-    b.setAttribute("aria-selected", aktif);
+    b.setAttribute("aria-pressed", String(aktif));
   });
   document.getElementById("absPamWrap").classList.toggle("hidden", jenis === "ob"); // baris PAM hanya untuk security
   document.getElementById("absSubjudul").textContent = SUBJUDUL_ABSENSI[jenis];
@@ -268,7 +330,7 @@ function absSetJenis(jenis) {
   absSetStatus("");
 }
 
-document.querySelectorAll(".seg-btn").forEach((b) => b.addEventListener("click", () => absSetJenis(b.dataset.jenis)));
+document.querySelectorAll(".report-option").forEach((b) => b.addEventListener("click", () => absSetJenis(b.dataset.jenis)));
 absBulan.addEventListener("change", absReset);
 absTahun.addEventListener("input", absReset);
 

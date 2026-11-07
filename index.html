@@ -9,6 +9,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="minimal.css" />
 </head>
@@ -31,7 +32,7 @@
           <i data-lucide="calendar-days" class="icon"></i> Jadwal Security
         </button>
         <button id="tabBtnOB" class="main-tab" role="tab" aria-selected="false" aria-controls="tabOB" data-tab="ob">
-          <i data-lucide="calendar-check" class="icon"></i> OB
+          <i data-lucide="calendar-check" class="icon"></i> Kehadiran OB
         </button>
         <button id="tabBtnAbsensi" class="main-tab" role="tab" aria-selected="false" aria-controls="tabAbsensi" data-tab="absensi">
           <i data-lucide="clipboard-check" class="icon"></i> Laporan Absensi
@@ -171,8 +172,8 @@
       <div class="card" style="margin-top: 0;">
         <div class="card-head">
           <div>
-            <h2 class="card-title">Kalender OB</h2>
-            <p class="card-sub">Hari kerja otomatis <b>masuk</b>. Sabtu, Minggu, dan tanggal merah otomatis <b>libur</b>. Klik sebuah tanggal untuk menambah catatan: sakit, izin, cuti, libur, backup, atau lembur.</p>
+            <h2 class="card-title">Kehadiran OB</h2>
+            <p class="card-sub">Hari kerja otomatis <b>masuk</b>. Sabtu, Minggu, tanggal merah, dan cuti bersama otomatis <b>libur (O)</b>. Klik hari kerja untuk mencatat sakit, izin, cuti biasa (CT), libur, backup, atau lembur.</p>
           </div>
         </div>
 
@@ -195,12 +196,6 @@
             <button id="obNext" type="button" class="btn-secondary btn-compact cal-arrow" aria-label="Bulan berikutnya">&#8250;</button>
             <button id="obHariIni" type="button" class="btn-secondary btn-compact">Bulan ini</button>
           </div>
-          <div class="cal-save">
-            <span id="obKotor" class="badge-kotor hidden">Belum disimpan</span>
-            <button id="obSimpan" type="button" class="btn-primary" disabled>
-              <i data-lucide="save" class="icon"></i> Simpan catatan bulan ini
-            </button>
-          </div>
         </div>
 
         <div id="obKalenderWrap" class="cal-wrap">
@@ -210,10 +205,8 @@
           <div id="obKalender" class="cal-grid"></div>
         </div>
 
-        <div class="cal-legend" aria-label="Arti warna kalender">
-          <span><i class="cal-dot cal-dot-merah"></i> Libur (Minggu / tanggal merah)</span>
-          <span><i class="cal-dot cal-dot-sabtu"></i> Sabtu</span>
-          <span><i class="cal-dot cal-dot-cuti"></i> Cuti bersama (tetap masuk kecuali dicatat)</span>
+        <div class="cal-legend" aria-label="Aturan kalender">
+          <span><b>P</b> = hari kerja / masuk <span aria-hidden="true">·</span> <b>O</b> = libur (Sabtu, Minggu, tanggal merah, cuti bersama)</span>
         </div>
       </div>
     </section>
@@ -226,9 +219,19 @@
             <h2 class="card-title">Laporan Absensi</h2>
             <p id="absSubjudul" class="card-sub">Periode dari tanggal 16 bulan sebelumnya sampai tanggal 15 bulan yang dipilih. Datanya diambil dari jadwal yang sudah tersimpan.</p>
           </div>
-          <div class="seg" role="tablist" aria-label="Jenis laporan">
-            <button id="absJenisSecurity" type="button" class="seg-btn active" role="tab" aria-selected="true" data-jenis="security">Security</button>
-            <button id="absJenisOb" type="button" class="seg-btn" role="tab" aria-selected="false" data-jenis="ob">OB</button>
+        </div>
+
+        <div class="report-picker" role="group" aria-label="Pilih jenis laporan absensi">
+          <div class="report-picker-label">Pilih bagian laporan</div>
+          <div class="report-options">
+            <button id="absJenisSecurity" type="button" class="report-option active" aria-pressed="true" data-jenis="security">
+              <span class="report-option-title"><i data-lucide="shield-check" class="icon"></i> Security</span>
+              <span class="report-option-desc">Petugas keamanan berdasarkan jadwal shift</span>
+            </button>
+            <button id="absJenisOb" type="button" class="report-option" aria-pressed="false" data-jenis="ob">
+              <span class="report-option-title"><i data-lucide="clipboard-list" class="icon"></i> OB (Office Boy)</span>
+              <span class="report-option-desc">Petugas OB berdasarkan kalender dan catatan</span>
+            </button>
           </div>
         </div>
 
@@ -263,12 +266,16 @@
           </label>
 
           <div class="action-buttons absensi-actions">
-            <button onclick="previewAbsensi()" class="btn-secondary">
-              <i data-lucide="eye" class="icon"></i> Lihat Preview
+            <button id="absPreviewToggle" onclick="previewAbsensi()" class="btn-secondary">
+              <i data-lucide="eye" class="icon"></i> Tampilkan Preview
             </button>
             <button onclick="downloadAbsensi()" class="btn-primary">
               <i data-lucide="download" class="icon"></i> Download PDF Absensi
             </button>
+          </div>
+
+          <div id="absPreviewWrap" class="abs-preview hidden">
+            <div id="absPreviewPages" class="abs-preview-pages" aria-label="Halaman preview laporan absensi"></div>
           </div>
         </div>
       </div>
@@ -318,12 +325,16 @@
           </div>
         </div>
         <p id="obFormPesan" class="text-sm text-red-600 mt-2"></p>
-        <button type="button" id="obTambah" class="btn-secondary mt-3"><i data-lucide="plus" class="icon"></i> Tambah catatan</button>
+        <div id="obCutiBersamaWrap" class="hint-box px-4 py-3 mt-3 hidden">
+          <p class="text-sm"><b id="obCutiBersamaKet">Cuti bersama</b> tercatat pada tanggal ini. Bila perusahaan meliburkannya, terapkan ke semua anggota (dihitung <b>O</b> di laporan).</p>
+          <button type="button" id="obCutiSemua" class="btn-secondary btn-compact mt-2">Terapkan cuti bersama ke semua anggota</button>
+        </div>
+        <button type="button" id="obTambah" class="btn-secondary mt-3"><i data-lucide="plus" class="icon"></i> Tambah catatan lain</button>
       </div>
 
       <div class="px-5 py-3 settings-foot flex flex-wrap items-center justify-between gap-3">
-        <p class="text-sm muted-copy">Catatan baru tersimpan ke spreadsheet setelah menekan <b>Simpan catatan bulan ini</b>.</p>
-        <button type="button" onclick="obTutupDialog()" class="btn-primary">Selesai</button>
+        <p class="text-sm muted-copy">Pilih nama dan keterangan, lalu tekan <b>Selesai</b>. Perubahan akan tersimpan otomatis ke spreadsheet.</p>
+        <button type="button" id="obSelesai" class="btn-primary ml-auto">Selesai</button>
       </div>
     </div>
   </div>

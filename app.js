@@ -76,7 +76,7 @@ async function muatMaster() {
   document.getElementById("absMuatBtn").disabled = true;
   setStatus("Memuat master data dari spreadsheet...");
   try {
-    const m = await api.getMaster();
+    const m = await api.getMaster(new Date().getFullYear());
     masterData = m;
     namaList = m.petugas;
     shiftList = m.shift;

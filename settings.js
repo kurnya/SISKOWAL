@@ -39,7 +39,7 @@ function bukaPengaturan() {
   };
   // OB dan hari libur hanya ada bila Apps Script sudah versi terbaru. Bila tidak, tidak dikirim (sheet dibiarkan).
   if (Array.isArray(masterData.ob)) draft.ob = masterData.ob.map((o) => ({ ...o }));
-  if (Array.isArray(masterData.libur)) draft.libur = masterData.libur.map((h) => ({ ...h }));
+  if (Array.isArray(masterData.libur)) draft.libur = masterData.libur.map((h) => ({ ...h, libur: h.jenis === "Cuti Bersama" ? true : h.libur }));
 
   const tahunIni = String(new Date().getFullYear());
   liburTahun = (draft.libur || []).some((h) => h.tanggal.startsWith(tahunIni)) ? tahunIni : "semua";
@@ -79,15 +79,20 @@ function tombolBaris(i, total, bisaHapus) {
 const PESAN_BACKEND_LAMA =
   '<p class="text-sm text-red-600">Bagian ini butuh Apps Script versi terbaru. Tempel <b>Code.gs</b> dan <b>Logic.gs</b> yang baru, jalankan <b>setup</b> sekali, lalu deploy versi baru dan muat ulang halaman.</p>';
 
+function settingsSection(judul, deskripsi, isi) {
+  return `<section class="settings-section-card">
+    <div class="settings-section-head"><h4 class="settings-section-title">${judul}</h4>${deskripsi ? `<p class="settings-section-desc">${deskripsi}</p>` : ""}</div>
+    <div class="settings-section-content">${isi}</div>
+  </section>`;
+}
+
 function renderOB(body) {
   if (!draft.ob) {
     body.innerHTML = PESAN_BACKEND_LAMA;
     return;
   }
   const hariIni = hariIniIso();
-  body.innerHTML = `
-    <p class="text-sm muted-copy mb-3">Daftar OB untuk kalender dan laporan. OB yang sudah tersimpan <b>tidak dihapus</b>: bila sudah berhenti, klik <b>Berhenti</b> (mengisi tanggal Selesai) agar laporan periode lama tetap memuatnya. Mengganti nama berarti orang yang sama; untuk orang baru, tambahkan baris baru.</p>
-    <div class="settings-list">
+  const daftar = `<div class="settings-list">
       ${draft.ob.map((o, i) => {
         const berhenti = o.selesai && o.selesai < hariIni;
         const belumMulai = o.mulai && o.mulai > hariIni;
@@ -107,8 +112,8 @@ function renderOB(body) {
           ${status ? `<span class="ob-status">${status}</span>` : ""}
         </div>`;
       }).join("")}
-    </div>
-    <button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah OB</button>`;
+    </div><button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah OB</button>`;
+  body.innerHTML = settingsSection("Daftar petugas OB", "Atur nama, jabatan, dan masa tugas OB. Petugas yang berhenti tetap disimpan agar laporan periode sebelumnya tidak berubah.", daftar);
 }
 
 function renderLibur(body) {
@@ -122,9 +127,7 @@ function renderLibur(body) {
   const baris = draft.libur
     .map((h, i) => ({ h, i }))
     .filter(({ h }) => liburTahun === "semua" || !h.tanggal || h.tanggal.startsWith(liburTahun));
-  body.innerHTML = `
-    <p class="text-sm muted-copy mb-3">Hanya <b>Sabtu, Minggu, dan baris dengan centang "Otomatis libur"</b> yang dianggap libur di kalender OB. Libur nasional sudah dicentang; <b>cuti bersama tidak</b> (kebijakan tiap perusahaan), jadi hanya tampil sebagai pengingat dan hari itu tetap masuk kecuali dicatat. Centang bila perusahaan meliburkannya. Tambahkan hari libur tahun berikutnya di sini.</p>
-    <div class="pill-group mb-3" role="group" aria-label="Filter tahun">
+  const isi = `<div class="pill-group mb-3" role="group" aria-label="Filter tahun">
       ${tahun.map((t) => chip(t, t)).join("")}${chip("semua", "Semua")}
     </div>
     <div class="settings-list">
@@ -133,20 +136,18 @@ function renderLibur(body) {
           <input type="date" data-field="tanggal" data-i="${i}" value="${escapeHtml(h.tanggal)}" aria-label="Tanggal" />
           <input type="text" class="libur-ket" data-field="keterangan" data-i="${i}" value="${escapeHtml(h.keterangan)}" maxlength="100" placeholder="Keterangan" aria-label="Keterangan" />
           <button type="button" class="pill pill-${h.jenis === "Nasional" ? "nasional" : h.jenis === "Cuti Bersama" ? "cuti" : "lain"}" data-action="jenis" data-i="${i}" title="Klik untuk mengganti jenis">${escapeHtml(h.jenis)}</button>
-          <label class="settings-check-lg libur-centang"><input type="checkbox" data-field="libur" data-i="${i}" ${h.libur ? "checked" : ""} /><span class="text-sm">Otomatis libur</span></label>
+          <label class="settings-check-lg libur-centang"><input type="checkbox" data-field="libur" data-i="${i}" ${h.libur || h.jenis === "Cuti Bersama" ? "checked" : ""} ${h.jenis === "Cuti Bersama" ? "disabled" : ""} /><span class="text-sm">Otomatis libur</span></label>
           <button type="button" class="row-btn row-btn-del" data-action="hapus" data-i="${i}" aria-label="Hapus">✕</button>
         </div>`).join("") : '<p class="text-sm muted-copy">Belum ada hari libur untuk tahun ini.</p>'}
-    </div>
-    <button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah hari libur</button>`;
+    </div><button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah hari libur</button>`;
+  body.innerHTML = settingsSection("Hari libur dan cuti bersama", "Sabtu, Minggu, libur nasional, dan cuti bersama otomatis dihitung libur (O). Daftar tanggal resmi dimuat otomatis; tambahkan tanggal khusus perusahaan bila diperlukan.", isi);
 }
 
 function renderTab() {
   const body = document.getElementById("settingsBody");
 
   if (tabAktif === "petugas") {
-    body.innerHTML = `
-      <p class="text-sm muted-copy mb-3">Petugas <b>aktif</b> muncul di tabel jadwal. Petugas non aktif disembunyikan tanpa menghapus datanya. Urutan di sini menjadi urutan di tabel.</p>
-      <div class="settings-list">
+    const isi = `<div class="settings-list">
         ${draft.petugas.map((p, i) => `
           <div class="settings-row">
             <label class="settings-check" title="Aktif">
@@ -155,15 +156,13 @@ function renderTab() {
             <input type="text" data-field="nama" data-i="${i}" value="${escapeHtml(p.nama)}" maxlength="100" placeholder="Nama petugas" aria-label="Nama petugas" />
             ${tombolBaris(i, draft.petugas.length, true)}
           </div>`).join("")}
-      </div>
-      <button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah petugas</button>`;
+      </div><button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah petugas</button>`;
+    body.innerHTML = settingsSection("Daftar petugas Security", "Petugas aktif muncul di tabel jadwal. Nonaktifkan petugas untuk menyembunyikannya tanpa menghapus data. Urutan daftar menentukan urutan di tabel.", isi);
   }
 
   if (tabAktif === "shift") {
     const kolom = columns.deriveJamColumns(draft.shift);
-    body.innerHTML = `
-      <p class="text-sm muted-copy mb-3">Jam berformat <b>HH.MM-HH.MM</b> (contoh 08.00-16.00). Setiap jam yang berbeda menjadi satu kolom di tabel hasil dan PDF, urut menurut kemunculan pertama di daftar ini. Kode <b>X</b> (libur) wajib ada.</p>
-      <div class="settings-list">
+    const isi = `<div class="settings-list">
         ${draft.shift.map((s, i) => {
           const libur = s.kode.trim().toUpperCase() === "X";
           return `
@@ -174,9 +173,9 @@ function renderTab() {
             ${tombolBaris(i, draft.shift.length, !libur)}
           </div>`;
         }).join("")}
-      </div>
-      <button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah kode shift</button>
+      </div><button type="button" class="btn-secondary px-4 py-2 mt-3" data-action="tambah">+ Tambah kode shift</button>
       <p id="kolomInfo" class="text-sm muted-copy mt-3"></p>`;
+    body.innerHTML = settingsSection("Kode dan jam shift", "Gunakan format HH.MM-HH.MM, misalnya 08.00-16.00. Setiap jam berbeda menjadi kolom pada tabel dan PDF. Kode X untuk libur wajib tersedia.", isi);
     infoKolom(kolom);
   }
 
@@ -186,17 +185,14 @@ function renderTab() {
   if (tabAktif === "umum") {
     const c = draft.config;
     const f = (key, label) => `
-      <label class="field-label" for="cfg_${key}">${label}</label>
-      <input type="text" id="cfg_${key}" data-cfg="${key}" value="${escapeHtml(c[key])}" maxlength="300" class="mb-3" />`;
+      <div class="settings-field"><label class="field-label" for="cfg_${key}">${label}</label>
+      <input type="text" id="cfg_${key}" data-cfg="${key}" value="${escapeHtml(c[key])}" maxlength="300" /></div>`;
     const area = (key, label) => `
-      <label class="field-label" for="cfg_${key}">${label}</label>
-      <textarea id="cfg_${key}" data-cfg="${key}" rows="3" maxlength="300" class="settings-textarea mb-3">${escapeHtml(c[key])}</textarea>`;
+      <div class="settings-field"><label class="field-label" for="cfg_${key}">${label}</label>
+      <textarea id="cfg_${key}" data-cfg="${key}" rows="3" maxlength="300" class="settings-textarea">${escapeHtml(c[key])}</textarea></div>`;
     body.innerHTML = `
-      ${f("perusahaan", "Nama perusahaan")}
-      ${f("alamat", "Alamat")}
-      ${f("kontak", "Kontak")}
-      ${f("lokasi", "Lokasi")}
-      <div class="hint-box px-4 py-4 mt-2">
+      ${settingsSection("Identitas perusahaan", "Informasi ini digunakan pada dokumen dan jadwal.", `<div class="settings-fields-grid">${f("perusahaan", "Nama perusahaan")}${f("alamat", "Alamat")}${f("kontak", "Kontak")}${f("lokasi", "Lokasi")}</div>`)}
+      ${settingsSection("PAM", "Atur kolom waktu PAM dan nama petugas yang dicantumkan pada jadwal serta laporan.", `<div class="hint-box px-4 py-4">
         <label class="settings-check-lg">
           <input type="checkbox" id="cfg_pam_aktif" data-cfg-bool="pam_aktif" ${c.pam_aktif ? "checked" : ""} />
           <span><b>Kolom PAM aktif</b><br><span class="text-sm muted-copy">Bila aktif, kolom 00.00-05.00 dan nama PAM tampil di tabel hasil dan PDF. Bila non aktif, kolom itu disembunyikan.</span></span>
@@ -204,18 +200,11 @@ function renderTab() {
         <div class="mt-3">
           ${f("keterangan_00_05", "Nama PAM")}
         </div>
-      </div>
+      </div>`)}
 
-      <div class="section-title mt-6 mb-1">Laporan Absensi</div>
-      <p class="text-sm muted-copy mb-3">Teks yang tercetak di PDF laporan absensi (security dan OB). Nama PAM di atas juga dipakai pada baris PAM. Nama dan tanda tangan penanda tangan ada pada gambar assets/ttd-blok.png.</p>
-      ${f("absensi_kota", "Kota (tanggal tanda tangan)")}
-      ${f("absensi_jam_kerja", "Teks jam kerja (legenda)")}
-      ${f("absensi_legenda", "Legenda keterangan (H, L, I, S, TK, CT)")}
-      ${area("absensi_catatan", "Catatan laporan security (kotak NOTE)")}
+      ${settingsSection("Laporan absensi", "Teks ini dicetak pada laporan Security dan OB.", `<div class="settings-fields-grid">${f("absensi_kota", "Kota untuk tanggal tanda tangan")}${f("absensi_jam_kerja", "Teks jam kerja pada legenda")}${f("absensi_legenda", "Legenda kode kehadiran")}${area("absensi_catatan", "Catatan laporan Security")}</div>`)}
 
-      <div class="section-title mt-6 mb-1">Laporan OB</div>
-      ${f("ob_jam_masuk", "Jam masuk OB (HH.MM-HH.MM)")}
-      ${area("ob_catatan", "Catatan laporan OB (kotak NOTE)")}`;
+      ${settingsSection("Laporan OB", "Pengaturan khusus yang dicetak pada laporan kehadiran OB.", `<div class="settings-fields-grid">${f("ob_jam_masuk", "Jam masuk OB (HH.MM-HH.MM)")}${area("ob_catatan", "Catatan laporan OB")}</div>`)}`;
   }
 }
 

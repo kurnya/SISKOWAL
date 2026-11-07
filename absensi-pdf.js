@@ -2,7 +2,7 @@
 // doc = instance jsPDF dengan plugin autoTable terpasang (doc.autoTable).
 (function (root) {
   const MARGIN = 10;
-  const KOLOM_KET = ["M", "L", "I", "S", "TK", "CT"];
+  const KOLOM_KET = ["M", "L", "I", "S", "TK", "CT", "CB"];
   // Posisi tanggal pada gambar blok tanda tangan (pecahan dari lebar/tinggi gambar):
   // titik tengah teks, dan garis dasarnya. Sesuai area yang dikosongkan di assets/ttd-blok.png.
   const TTD_TANGGAL = { x: 0.8214, y: 0.118 };

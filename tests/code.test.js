@@ -198,3 +198,11 @@ test("aksi lama (jadwal bulanan) tidak terganggu", () => {
   assert.deepEqual(get({ action: "bulan" }).data.bulan, ["2026-11"]);
   assert.deepEqual(get({ action: "jadwal", bulan: "2026-11" }).data.rows, [{ nama: "Agus Sudirman", hari: { 1: "P", 2: "X" } }]);
 });
+
+test("catatan cuti bersama (CB): diterima, tanpa backup", () => {
+  const { get, post } = baru();
+  const cb = { tanggal: "2026-03-20", idOb: "OB001", jenis: "CB", idBackup: "" };
+  assert.equal(post({ action: "simpan_ob_catatan", bulan: "2026-03", catatan: [cb, { ...cb, idOb: "OB002" }] }).ok, true);
+  assert.deepEqual(get({ action: "ob_catatan", dari: "2026-03-01", sampai: "2026-03-31" }).data.catatan.map((c) => c.jenis), ["CB", "CB"]);
+  assert.match(post({ action: "simpan_ob_catatan", bulan: "2026-03", catatan: [{ ...cb, idBackup: "OB003" }] }).error, /Backup hanya untuk/);
+});

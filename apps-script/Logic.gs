@@ -231,8 +231,9 @@ function sheetValuesToGrid(values) {
 // ====================== OB: master, hari libur, catatan kalender ======================
 var JABATAN_OB = ['ANGGOTA', 'BACKUP'];
 var JENIS_LIBUR = ['Nasional', 'Cuti Bersama', 'Lainnya'];
-// S sakit, I izin, TK tanpa keterangan, CT cuti, O libur (pada hari kerja), LEMBUR (masuk pada hari libur)
-var JENIS_CATATAN = ['S', 'I', 'TK', 'CT', 'O', 'LEMBUR'];
+// S sakit, I izin, TK tanpa keterangan, CT cuti biasa, CB cuti bersama (tampil O di laporan), O libur lain (pada hari kerja),
+// LEMBUR (masuk pada hari libur)
+var JENIS_CATATAN = ['S', 'I', 'TK', 'CT', 'CB', 'O', 'LEMBUR'];
 var JENIS_ABSEN = ['S', 'I', 'TK', 'CT']; // hanya jenis ini yang boleh punya pengganti (backup)
 var MAX_OB = 50;
 var MAX_LIBUR = 400;
@@ -392,7 +393,7 @@ function validateCatatan(bulan, list, obList) {
     if (pakai[kunci]) return 'Catatan ganda untuk ' + namaDari[c.idOb] + ' pada ' + c.tanggal;
     pakai[kunci] = true;
     if (c.idBackup) {
-      if (JENIS_ABSEN.indexOf(c.jenis) < 0) return 'Backup hanya untuk Sakit, Izin, Tanpa keterangan, atau Cuti (' + c.tanggal + ')';
+      if (JENIS_ABSEN.indexOf(c.jenis) < 0) return 'Backup hanya untuk Sakit, Izin, Tanpa keterangan, atau Cuti biasa (' + c.tanggal + ')';
       if (!ada[c.idBackup]) return 'Backup tidak ditemukan pada catatan ' + c.tanggal + ': ' + c.idBackup;
       if (c.idBackup === c.idOb) return namaDari[c.idOb] + ' tidak bisa menjadi backup untuk dirinya sendiri (' + c.tanggal + ')';
     }

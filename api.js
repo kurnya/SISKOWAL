@@ -39,8 +39,12 @@
     }
 
     return {
-      getMaster() {
-        return request((url) => fetchImpl(`${url}?action=master`));
+      getMaster(tahun) {
+        const q = tahun ? `&tahun=${encodeURIComponent(tahun)}` : "";
+        return request((url) => fetchImpl(`${url}?action=master${q}`));
+      },
+      getLiburTahun(tahun) {
+        return request((url) => fetchImpl(`${url}?action=libur_tahun&tahun=${encodeURIComponent(tahun)}`));
       },
       getDaftarBulan() {
         return request((url) => fetchImpl(`${url}?action=bulan`));

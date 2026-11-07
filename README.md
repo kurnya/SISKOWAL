@@ -31,7 +31,9 @@ Tab **Laporan Absensi** (di bagian atas halaman, di samping tab Jadwal) membuat 
 2. Klik **Muat Anggota**. Daftar anggota adalah gabungan kedua bulan. Hilangkan centang untuk mengecualikan anggota (mis. sudah tidak bertugas). Anggota yang hanya ada di salah satu bulan diberi tanda, dan selnya dikosongkan pada bulan ia tidak ada.
 3. Atur baris PAM, lalu **Lihat Preview** atau **Download PDF Absensi**.
 
-Aturan isi: semua kode libur (X, O, atau sel kosong) ditulis **O**; baris PAM berisi `M` setiap hari dengan nama dari Pengaturan (Nama PAM); legenda P/S/M dibuat dari Master_Shift dan hanya memuat kode yang dipakai di periode itu. Kota, teks jam kerja, legenda H/L/I/S/TK/CT, dan catatan NOTE diatur di **Pengaturan → Umum & PAM → Laporan Absensi**.
+Aturan isi: semua kode libur (X, O, atau sel kosong) dan cuti bersama (CB) ditulis **O**; cuti biasa tetap **CT**. Baris PAM berisi `M` setiap hari dengan nama dari Pengaturan (Nama PAM); legenda P/S/M dibuat dari Master_Shift dan hanya memuat kode yang dipakai di periode itu. Kota, teks jam kerja, legenda H/L/I/S/TK/CT/CB, dan catatan NOTE diatur di **Pengaturan → Umum & PAM → Laporan Absensi**. PDF juga menyediakan kolom keterangan `CB` tersendiri.
+
+Jika spreadsheet sudah memiliki teks legenda absensi lama, perbarui nilainya di **Pengaturan → Umum & PAM → Laporan Absensi** agar menjelaskan `CT : Cuti biasa` dan `CB : Cuti bersama (O)`.
 
 Tanda tangan: seluruh blok (Dibuat, Diketahui, Korlap beserta garis, nama, tanda tangan, dan stempel) adalah **satu gambar**, `assets/ttd-blok.png`. Hanya tanggal ("Jakarta, 16 September 2026") yang dicetak sebagai teks, karena berubah tiap periode; kota diatur di Pengaturan. Untuk mengganti penanda tangan atau tanda tangan, ganti file itu dengan gambar baru berlatar transparan dan **kosongkan area tanggal** (kanan atas). Tanggal dicetak di titik tengah 82% dari lebar dan 12% dari tinggi gambar (`TTD_TANGGAL` di `absensi-pdf.js`). Bila file tidak ada, PDF tetap dibuat dengan blok teks sederhana tanpa nama dan tanda tangan.
 
@@ -42,12 +44,12 @@ Kedua bulan harus sudah **tersimpan** di spreadsheet. Isian di tabel input yang 
 Tab **OB** berisi kalender bulanan. Aturan dasarnya:
 
 - **Hari kerja:** kosong berarti OB **masuk (P)**.
-- **Sabtu, Minggu, dan libur nasional:** kosong berarti **libur (O)**.
-- **Cuti bersama dan libur lain tidak otomatis libur** (kebijakan tiap perusahaan). Cuti bersama hanya muncul sebagai label kuning pengingat; hari itu tetap masuk kecuali Anda mencatatnya.
+- **Sabtu, Minggu, libur nasional, dan cuti bersama:** otomatis **libur (O)**.
+- **Libur lain:** mengikuti centang **Otomatis libur** di Pengaturan.
 
-Klik sebuah tanggal untuk menambah catatan, lalu tekan **Simpan catatan bulan ini**:
+Klik sebuah tanggal untuk menambah catatan. Tekan **Selesai** untuk menerapkan pilihan; setiap penambahan atau penghapusan kemudian disimpan otomatis ke spreadsheet:
 
-- **Hari kerja:** pilih OB dan keterangan (**Sakit S, Izin I, Tanpa keterangan TK, Cuti CT, Libur O**). Untuk Sakit/Izin/TK/Cuti, boleh memilih **Backup** (pengganti). Pilihan "Semua anggota" memudahkan cuti bersama yang diliburkan perusahaan.
+- **Hari kerja:** pilih OB dan keterangan: **Sakit (S), Izin (I), Tanpa keterangan (TK), Cuti biasa (CT), dan Libur lain (O)**. Untuk Sakit/Izin/TK/Cuti biasa, boleh memilih **Backup** (pengganti). Cuti bersama tidak perlu dicatat per orang: tanggalnya otomatis libur dan seluruh anggota mendapat **O**. Pilihan "Semua anggota" tersedia untuk jenis catatan lainnya.
 - **Hari libur:** catatannya adalah **siapa yang lembur** (OB itu dihitung masuk).
 
 Laporan OB dibuat di tab **Laporan Absensi** dengan memilih **OB** (periode 16 bulan lalu sampai 15 bulan ini, bisa mengecualikan anggota). Format dan tanda tangan sama dengan laporan security; baris PAM tidak ada.
@@ -55,9 +57,9 @@ Laporan OB dibuat di tab **Laporan Absensi** dengan memilih **OB** (periode 16 b
 **Mengelola OB dan hari libur** ada di **Pengaturan → OB** dan **Hari Libur**:
 
 - OB yang sudah tersimpan **tidak bisa dihapus**; klik **Berhenti** (mengisi tanggal Selesai) agar laporan periode lama tetap memuatnya. Mengganti nama berarti orang yang sama; untuk orang baru, tambahkan baris baru.
-- Daftar hari libur **2026** sudah terisi dari SKB 3 Menteri (Setneg). Tahun berikutnya ditambahkan sendiri lewat tab Hari Libur. Centang "Otomatis libur" bila perusahaan meliburkan suatu cuti bersama.
+- Daftar hari libur disinkronkan otomatis saat aplikasi dibuka dan saat kalender membuka tahun lain, lalu disimpan ke `Master_Libur`. Aplikasi memeriksa sumber [Indonesian Holidays API](https://indonesian-holidays.ahrulsyamil.com/) paling sering sekali sehari; sumber itu menyatakan datanya berasal dari SKB 3 Menteri. Data 2027 tersedia dari [pengumuman resmi Kemenko PMK](https://www.kemenkopmk.go.id/node/6444) sebagai cadangan. Tahun selanjutnya akan terisi otomatis setelah data resminya diterbitkan dan tersedia pada sumber. Cuti bersama otomatis libur (O), sedangkan libur khusus perusahaan dapat ditambahkan di Pengaturan.
 
-Sheet baru di spreadsheet: `Master_OB`, `Master_Libur`, dan `OB_Catatan`. Setelah memperbarui `Code.gs` dan `Logic.gs`, jalankan **`setup`** sekali lagi (aman: sheet yang sudah ada isinya tidak ditimpa, hanya sheet baru yang dibuat), lalu deploy versi baru.
+Sheet baru di spreadsheet: `Master_OB`, `Master_Libur`, dan `OB_Catatan`. Setelah memperbarui `Code.gs`, `Logic.gs`, `ob.js`, `api.js`, `app.js`, `ob-ui.js`, dan `settings.js`, jalankan **`setup`** sekali lagi (aman: sheet yang sudah ada isinya tidak ditimpa), lalu deploy Apps Script versi baru dan muat ulang aplikasi. Apps Script akan meminta izin akses HTTP untuk mengambil data kalender.
 
 ## Tes
 
