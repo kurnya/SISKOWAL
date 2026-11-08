@@ -55,6 +55,10 @@ class FakeSheet {
 
 function buatLingkungan() {
   const sheets = [new FakeSheet("Sheet1")];
+  const props = {};
+  const cacheData = {};
+  const fetchCalls = [];
+  const fetchRespons = { kode: 200, teks: JSON.stringify({ ok: true }) };
   const ss = {
     getSheets: () => sheets,
     getSheetByName: (n) => sheets.find((s) => s.name === n) || null,
@@ -67,14 +71,36 @@ function buatLingkungan() {
       MimeType: { JSON: "json" },
       createTextOutput: (t) => ({ isi: t, setMimeType() { return this; } })
     },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (props[k] === undefined ? null : props[k]) }) },
+    CacheService: {
+      getScriptCache: () => ({
+        get: (k) => (cacheData[k] === undefined ? null : cacheData[k]),
+        put: (k, v) => { cacheData[k] = String(v); },
+        remove: (k) => { delete cacheData[k]; }
+      })
+    },
     console
   });
   const dir = path.join(__dirname, "..", "apps-script");
   vm.runInContext(fs.readFileSync(path.join(dir, "Logic.gs"), "utf8"), ctx);
+  vm.runInContext(fs.readFileSync(path.join(dir, "WhatsApp.gs"), "utf8"), ctx);
   vm.runInContext(fs.readFileSync(path.join(dir, "Code.gs"), "utf8"), ctx);
   const get = (parameter) => JSON.parse(ctx.doGet({ parameter }).isi);
   const post = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).isi);
-  return { ctx, ss, sheets, get, post };
+  // UrlFetchApp sengaja tidak dipasang default: Code.gs mengecek ketersediaannya untuk sinkron hari libur.
+  const pasangUrlFetch = () => {
+    ctx.Utilities = {
+      computeHmacSha256Signature: (nilai, kunci) =>
+        Array.from(require("node:crypto").createHmac("sha256", kunci).update(nilai, "utf8").digest()).map((b) => (b > 127 ? b - 256 : b))
+    };
+    ctx.UrlFetchApp = {
+      fetch: (url, opsi) => {
+        fetchCalls.push({ url, opsi });
+        return { getResponseCode: () => fetchRespons.kode, getContentText: () => fetchRespons.teks };
+      }
+    };
+  };
+  return { ctx, ss, sheets, get, post, props, cacheData, fetchCalls, fetchRespons, pasangUrlFetch };
 }
 
 function baru() {

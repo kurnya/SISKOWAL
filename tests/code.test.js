@@ -206,3 +206,86 @@ test("catatan cuti bersama (CB): diterima, tanpa backup", () => {
   assert.deepEqual(get({ action: "ob_catatan", dari: "2026-03-01", sampai: "2026-03-31" }).data.catatan.map((c) => c.jenis), ["CB", "CB"]);
   assert.match(post({ action: "simpan_ob_catatan", bulan: "2026-03", catatan: [{ ...cb, idBackup: "OB003" }] }).error, /Backup hanya untuk/);
 });
+
+// ----- kirim_wa: relay ke BotSC -----
+function siapWa() {
+  const env = baru();
+  env.pasangUrlFetch();
+  Object.assign(env.props, { BOT_URL: "https://bot.example.com/", BOT_TOKEN: "rahasia-bot", WA_PIN: "1234" });
+  const pdf = Buffer.from("%PDF-1.4 isi").toString("base64");
+  const kirim = (ubah = {}) => env.post({ action: "kirim_wa", pin: "1234", fileName: "a.pdf", caption: "c", pdfBase64: pdf, ...ubah });
+  return { ...env, kirim, pdf };
+}
+
+test("kirim_wa: PIN benar diteruskan ke bot dengan tanda tangan HMAC, token tidak ikut dikirim", () => {
+  const { kirim, fetchCalls } = siapWa();
+  const r = kirim();
+  assert.equal(r.ok, true);
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls[0].url, "https://bot.example.com/send-document");
+  assert.equal(fetchCalls[0].opsi.payload.includes("rahasia-bot"), false, "token tidak ikut dikirim ke bot");
+  const terkirim = JSON.parse(fetchCalls[0].opsi.payload);
+  assert.equal(terkirim.fileName, "a.pdf");
+  // Rumus sama dengan sign() di BotSC/src/server.js
+  const harapan = require("node:crypto").createHmac("sha256", "rahasia-bot")
+    .update([terkirim.ts, terkirim.fileName, terkirim.caption, terkirim.pdfBase64].join("\n")).digest("hex");
+  assert.equal(terkirim.sig, harapan);
+  assert.ok(Math.abs(Date.now() - terkirim.ts) < 5000);
+  assert.equal(JSON.stringify(r).includes("rahasia-bot"), false, "token tidak ikut ke respons");
+});
+
+test("kirim_wa: PIN salah ditolak tanpa menghubungi bot, lalu terkunci setelah 5 kali", () => {
+  const { kirim, fetchCalls } = siapWa();
+  for (let i = 0; i < 5; i++) {
+    const r = kirim({ pin: "0000" });
+    assert.equal(r.ok, false);
+    assert.equal(r.kode, "PIN");
+  }
+  const terkunci = kirim({ pin: "1234" }); // PIN benar pun ditolak saat terkunci
+  assert.equal(terkunci.ok, false);
+  assert.equal(terkunci.kode, "KUNCI");
+  assert.equal(fetchCalls.length, 0);
+});
+
+test("kirim_wa: PIN benar mereset hitungan salah", () => {
+  const { kirim, cacheData } = siapWa();
+  kirim({ pin: "9" });
+  assert.equal(cacheData.wa_salah, "1");
+  assert.equal(kirim().ok, true);
+  assert.equal(cacheData.wa_salah, undefined);
+});
+
+test("kirim_wa: dibatasi 20 kiriman per jam", () => {
+  const { kirim, fetchCalls } = siapWa();
+  for (let i = 0; i < 20; i++) assert.equal(kirim().ok, true);
+  const r = kirim();
+  assert.equal(r.ok, false);
+  assert.equal(r.kode, "BATAS");
+  assert.equal(fetchCalls.length, 20);
+});
+
+test("kirim_wa: menolak file bukan PDF, konfigurasi kosong, BOT_URL tanpa https, dan error dari bot", () => {
+  const a = siapWa();
+  assert.equal(a.kirim({ pdfBase64: Buffer.from("halo").toString("base64") }).ok, false);
+  assert.equal(a.fetchCalls.length, 0);
+
+  const b = siapWa();
+  delete b.props.WA_PIN;
+  assert.match(b.kirim().error, /belum dikonfigurasi/);
+
+  const c = siapWa();
+  c.props.BOT_URL = "ftp://bot.example.com";
+  assert.match(c.kirim().error, /http/);
+  c.props.BOT_URL = "http://144.79.202.196:40017"; // tanpa domain: boleh, karena request ditandatangani
+  assert.equal(c.kirim().ok, true);
+  assert.equal(c.fetchCalls[0].url, "http://144.79.202.196:40017/send-document");
+
+  const d = siapWa();
+  d.fetchRespons.teks = JSON.stringify({ ok: false, error: "Bot WhatsApp sedang terputus, coba lagi nanti" });
+  assert.match(d.kirim().error, /terputus/);
+
+  const e = siapWa();
+  e.fetchRespons.teks = "<html>502</html>";
+  e.fetchRespons.kode = 502;
+  assert.match(e.kirim().error, /502/);
+});

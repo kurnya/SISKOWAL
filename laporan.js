@@ -309,6 +309,50 @@ function downloadAbsensi() {
   link.click();
 }
 
+// PIN pengiriman WA: diminta sekali per sesi tab, tidak disimpan permanen.
+function absAmbilPin() {
+  try {
+    const tersimpan = sessionStorage.getItem("siskowal_wa_pin");
+    if (tersimpan) return tersimpan;
+  } catch (e) { /* sessionStorage tidak tersedia: tanya setiap kali */ }
+  const pin = window.prompt("Masukkan PIN pengiriman WhatsApp:");
+  return pin ? pin.trim() : "";
+}
+
+function absSimpanPin(pin, benar) {
+  try {
+    if (benar) sessionStorage.setItem("siskowal_wa_pin", pin);
+    else sessionStorage.removeItem("siskowal_wa_pin");
+  } catch (e) { /* abaikan */ }
+}
+
+async function kirimAbsensiWA() {
+  const doc = absBuatDokumen();
+  if (!doc) return;
+  const pin = absAmbilPin();
+  if (!pin) {
+    absSetStatus("Pengiriman dibatalkan: PIN belum diisi.", "error");
+    return;
+  }
+  const jenis = absJenis === "ob" ? "OB" : "SECURITY";
+  const nama = `ABSENSI ${jenis} ${absState.periode.mulaiPendek} - ${absState.periode.selesaiPendek}.pdf`;
+  const tombol = document.getElementById("absKirimWA");
+  tombol.disabled = true;
+  absSetStatus("Mengirim ke grup WhatsApp...");
+  try {
+    // output("datauristring") berbentuk "data:application/pdf;...;base64,XXXX"
+    const base64 = doc.output("datauristring").split(",")[1];
+    await api.kirimDokumenWA(base64, nama, `Jadwal absensi ${jenis} periode ${absState.periode.mulaiLabel} / ${absState.periode.selesaiLabel}`, pin);
+    absSimpanPin(pin, true);
+    absSetStatus("Terkirim ke grup WhatsApp.", "ok");
+  } catch (e) {
+    if (e.kode === "PIN") absSimpanPin(pin, false); // PIN salah: tanya lagi pada kiriman berikutnya
+    absSetStatus(e.message || "Gagal mengirim ke WhatsApp.", "error");
+  } finally {
+    tombol.disabled = false;
+  }
+}
+
 document.getElementById("absList").addEventListener("change", (e) => {
   if (e.target.matches("input[type=checkbox]")) {
     e.target.closest(".absensi-item").classList.toggle("dikecualikan", !e.target.checked);

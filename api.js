@@ -38,7 +38,37 @@
       throw lastError;
     }
 
+    // Kirim PDF ke grup WA lewat Apps Script (yang meneruskan ke bot). Token bot tidak ada di sini; yang
+    // dikirim hanya PIN dari pengguna. Sengaja tanpa retry agar pesan tidak terkirim ganda.
+    async function kirimDokumenWA(pdfBase64, fileName, caption, pin) {
+      const url = getUrl();
+      if (!url) throw new Error("API_URL belum diisi di config.js");
+      let res;
+      try {
+        res = await fetchImpl(url, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" }, // hindari preflight CORS
+          body: JSON.stringify({ action: "kirim_wa", pin, fileName, caption, pdfBase64 })
+        });
+      } catch (e) {
+        throw new Error("Server tidak bisa dijangkau");
+      }
+      let payload;
+      try {
+        payload = await res.json();
+      } catch (e) {
+        throw new Error("Respons server bukan JSON");
+      }
+      if (!payload.ok) {
+        const err = new Error(payload.error || "Gagal mengirim ke WhatsApp");
+        err.kode = payload.kode;
+        throw err;
+      }
+      return true;
+    }
+
     return {
+      kirimDokumenWA,
       getMaster(tahun) {
         const q = tahun ? `&tahun=${encodeURIComponent(tahun)}` : "";
         return request((url) => fetchImpl(`${url}?action=master${q}`));
@@ -92,8 +122,7 @@
     module.exports = { createApi };
   } else {
     root.api = createApi({
-      getUrl: () => (root.SISKOWAL_CONFIG || {}).API_URL,
-      fetchImpl: (...args) => root.fetch(...args)
+      getUrl: () => (root.SISKOWAL_CONFIG || {}).API_URL,      fetchImpl: (...args) => root.fetch(...args)
     });
   }
 })(typeof window !== "undefined" ? window : globalThis);

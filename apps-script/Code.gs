@@ -267,6 +267,9 @@ function doPost(e) {
     if (body.action === 'simpan_ob_catatan') {
       return jsonOut_({ ok: true, data: simpanObCatatan_(body.bulan, body.catatan) });
     }
+    if (body.action === 'kirim_wa') {
+      return jsonOut_(kirimWa_(body));
+    }
     return jsonOut_({ ok: false, error: 'Aksi tidak dikenal' });
   } catch (err) {
     return jsonOut_({ ok: false, error: String(err.message || err) });

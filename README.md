@@ -66,3 +66,40 @@ Sheet baru di spreadsheet: `Master_OB`, `Master_Libur`, dan `OB_Catatan`. Setela
 ```
 npm test
 ```
+
+## Kirim PDF ke Grup WhatsApp (via BotSC)
+
+Tombol **Kirim ke Grup WA** di tab Laporan Absensi mengirim PDF ke satu grup WhatsApp lewat bot (`BotSC`). Alurnya:
+
+```
+Browser (GitHub Pages) → Apps Script (cek PIN) → BotSC (/send-document) → Grup WhatsApp
+```
+
+Karena web dihosting publik (GitHub Pages), **tidak ada rahasia di repo atau browser**. Token bot dan PIN hanya ada di Script Properties Apps Script dan `.env` bot. Apps Script menandatangani setiap permintaan ke bot (HMAC-SHA256 + waktu, sekali pakai) sehingga token tidak pernah dikirim, dan `BOT_URL` boleh berupa `http://IP:port` tanpa domain.
+
+### 1. Bot (hosting Node.js)
+
+Di `.env` BotSC:
+
+```env
+SEND_TOKEN=<string acak panjang, mis. hasil: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
+SEND_GROUP_ID=<id grup, 1203xxxx@g.us; cari dengan: npm run list-groups>
+# PORT / SERVER_PORT biasanya diisi otomatis oleh hosting
+```
+
+Restart bot, lalu buka `http://<IP:PORT>/health`. Hasilnya harus `{"ok":true,"connected":true}`. `BOT_URL` berupa `http://IP:PORT` (alamat server di panel hosting) cukup, karena yang memanggil bot adalah Apps Script, bukan browser.
+
+### 2. Apps Script
+
+1. Tambahkan file ketiga di project Apps Script: `apps-script/WhatsApp.gs` (selain `Code.gs` dan `Logic.gs`), dan perbarui `Code.gs`.
+2. **Project Settings → Script properties**, tambahkan:
+   - `BOT_URL` = alamat bot, mis. `http://144.79.202.196:40017` (tanpa garis miring di akhir)
+   - `BOT_TOKEN` = nilai `SEND_TOKEN` di `.env` bot
+   - `WA_PIN` = PIN yang akan diketik petugas (pilih yang tidak mudah ditebak)
+3. **Deploy → Kelola deployment → Edit → Versi baru → Deploy**. Apps Script akan meminta izin baru ("menghubungkan ke layanan eksternal"); setujui.
+
+### 3. Pemakaian
+
+Klik **Kirim ke Grup WA**, masukkan PIN (diingat selama tab terbuka, tidak disimpan permanen). Pengaman di Apps Script: 5 PIN salah berturut-turut mengunci pengiriman 10 menit, dan maksimal 20 kiriman per jam. Bot sendiri membatasi 10 permintaan per menit, PDF maksimal 8 MB, dan hanya mengirim ke `SEND_GROUP_ID`.
+
+Mengganti PIN atau token cukup lewat Script Properties, tanpa mengubah kode atau repo.
