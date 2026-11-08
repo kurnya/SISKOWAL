@@ -421,6 +421,10 @@ function runKonversiJadwal() {
 }
 
 function generatePDFBlob() {
+  return generatePDFDoc().output("bloburl");
+}
+
+function generatePDFDoc() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4", compress: true });
   const bulan = parseInt(document.getElementById("bulan").value);
@@ -473,7 +477,33 @@ function generatePDFBlob() {
     theme: "grid",
   });
 
-  return doc.output("bloburl");
+  return doc;
+}
+
+// Kirim PDF jadwal ke grup WA lewat Apps Script (PIN dicek di sana). Pakai PDF yang sama dengan Download.
+async function kirimJadwalWA() {
+  const bulan = parseInt(document.getElementById("bulan").value);
+  const tahun = parseInt(document.getElementById("tahun").value);
+  const namaBulan = new Date(tahun, bulan).toLocaleDateString("id-ID", { month: "long" }).toUpperCase();
+  const pin = absAmbilPin(); // dibagi dengan laporan absensi (laporan.js)
+  if (!pin) {
+    setStatus("Pengiriman dibatalkan: PIN belum diisi.", "error");
+    return;
+  }
+  const tombol = document.getElementById("kirimJadwalWA");
+  tombol.disabled = true;
+  setStatus("Mengirim ke grup WhatsApp...");
+  try {
+    const base64 = generatePDFDoc().output("datauristring").split(",")[1];
+    await api.kirimDokumenWA(base64, `JADWAL BULAN ${namaBulan} ${tahun}.pdf`, `Jadwal security bulan ${namaBulan} ${tahun}`, pin);
+    absSimpanPin(pin, true);
+    setStatus("Terkirim ke grup WhatsApp.", "ok", true);
+  } catch (e) {
+    if (e.kode === "PIN") absSimpanPin(pin, false);
+    setStatus(e.message || "Gagal mengirim ke WhatsApp.", "error");
+  } finally {
+    tombol.disabled = false;
+  }
 }
 
 function previewPDF() {
