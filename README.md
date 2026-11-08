@@ -93,7 +93,7 @@ Restart bot, lalu buka `http://<IP:PORT>/health`. Hasilnya harus `{"ok":true,"co
 
 1. Tambahkan file ketiga di project Apps Script: `apps-script/WhatsApp.gs` (selain `Code.gs` dan `Logic.gs`), dan perbarui `Code.gs`.
 2. **Project Settings → Script properties**, tambahkan:
-   - `BOT_URL` = alamat bot, mis. `http://144.79.202.196:40017` (tanpa garis miring di akhir)
+   - `BOT_URL` = alamat bot, mis. `http://203.0.113.10:40000` (tanpa garis miring di akhir)
    - `BOT_TOKEN` = nilai `SEND_TOKEN` di `.env` bot
    - `WA_PIN` = PIN yang akan diketik petugas (pilih yang tidak mudah ditebak)
 3. **Deploy → Kelola deployment → Edit → Versi baru → Deploy**. Apps Script akan meminta izin baru ("menghubungkan ke layanan eksternal"); setujui.

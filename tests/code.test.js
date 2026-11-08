@@ -276,9 +276,9 @@ test("kirim_wa: menolak file bukan PDF, konfigurasi kosong, BOT_URL tanpa https,
   const c = siapWa();
   c.props.BOT_URL = "ftp://bot.example.com";
   assert.match(c.kirim().error, /http/);
-  c.props.BOT_URL = "http://144.79.202.196:40017"; // tanpa domain: boleh, karena request ditandatangani
+  c.props.BOT_URL = "http://203.0.113.10:40000"; // tanpa domain: boleh, karena request ditandatangani
   assert.equal(c.kirim().ok, true);
-  assert.equal(c.fetchCalls[0].url, "http://144.79.202.196:40017/send-document");
+  assert.equal(c.fetchCalls[0].url, "http://203.0.113.10:40000/send-document");
 
   const d = siapWa();
   d.fetchRespons.teks = JSON.stringify({ ok: false, error: "Bot WhatsApp sedang terputus, coba lagi nanti" });
